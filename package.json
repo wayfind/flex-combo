@@ -1,0 +1,30 @@
+{
+  "name": "flex-combo",
+  "version": "0.1.0",
+  "description": "The Flex-combo is combo tool designed for web front-end developer. It support various kinds of combo format by modify configuration(eg. yahoo combo).",
+  "main": "flex-combo.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "iconv-lite": "~0.2.5",
+    "is-utf8": "~0.2.0",
+    "joinbuffers": "~0.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node ./test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wayfind/flex-combo.git"
+  },
+  "keywords": [
+    "combo",
+    "js",
+    "node",
+    "taobao"
+  ],
+  "author": "wayfind",
+  "license": "BSD"
+}
