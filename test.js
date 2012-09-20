@@ -1,6 +1,6 @@
 var http = require('http');
 var flexCombo = require('./flex-combo.js');
-var comboInst = flexCombo({'/test': 'test'});
+var comboInst = flexCombo(__dirname, {'/test': 'test'});
 http.createServer(function (req, res) {
     comboInst(req, res, function(){
         res.writeHead(200, {'Content-Type': 'text/plain'});

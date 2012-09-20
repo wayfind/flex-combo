@@ -30,7 +30,8 @@ var param = {
         '\\?t=\\d+':'',
         '-min\\.js$':'\\.js'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml'
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml',
+    prjDir: ''
 }; 
 
 function adaptCharset(buff, outCharset){
@@ -70,7 +71,7 @@ function readFromLocal (fullPath) {
     for (var i = 0, len = dirs.length; i < len; i++){
         var dir = dirs[i];
         var revPath = fullPath.slice(longestMatchPos.length, fullPath.length);
-        var absPath = path.normalize(path.join(__dirname, dir, revPath));
+        var absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             return adaptCharset(buff, param.charset);
@@ -87,7 +88,7 @@ var merge = function(dest, src) {
 }
 
 
-exports = module.exports = function(urls, options){
+exports = module.exports = function(prjDir, urls, options){
     if(urls){
         param.urls = merge(param.urls, urls);
     }
@@ -95,6 +96,7 @@ exports = module.exports = function(urls, options){
         options.urls = param.urls;
         param = merge(param, options);
     }
+    param.prjDir = prjDir;
    var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
@@ -120,7 +122,7 @@ exports = module.exports = function(urls, options){
             }
 
             //本地没有，从服务器获取  
-            console.log('send http request:'+ param.host+ url);
+            //console.log('send http request:'+ param.host+ url);
             http.get({host: param.host, port: 80, path: url}, function(resp) {
                 var buffs = [];
                 resp.on('data', function(chunk) {
@@ -135,15 +137,15 @@ exports = module.exports = function(urls, options){
                     return;
                 });
             }).on('error',function(e){
-                console.log('Networking error:' + e.message);
+                //console.log('Networking error:' + e.message);
                 return;
             });
             return;
         }
         prefix = url.substring(0, prefix);
-        console.log(prefix+'|'+param.servlet);
+        //console.log(prefix+'|'+param.servlet);
         var files = url.substring(prefix.length + param.servlet.length + 1, url.length);
-        console.log(files);
+        //console.log(files);
         files = files.split(param.seperator, 1000);
 
         var reqArray = [];
@@ -178,10 +180,10 @@ exports = module.exports = function(urls, options){
                 continue;
             }
             (function(id) {
-                console.log('define request: '+ reqArray[i].file);
+                //console.log('define request: '+ reqArray[i].file);
                 http.get({host: param.host, port: 80, path: url}, function(resp) {
                     var buffs = [];
-                    console.log('request: ' + reqPath+reqArray[id].file);
+                    //console.log('request: ' + reqPath+reqArray[id].file);
                     resp.on('data', function(chunk) {
                         buffs.push(chunk);
                     });
@@ -192,7 +194,7 @@ exports = module.exports = function(urls, options){
                         sendData();
                     });
                 }).on('error',function(e){
-                    console.log('Networking error:' + e.message);
+                    //console.log('Networking error:' + e.message);
                 });
             })(i);
         }
