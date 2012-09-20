@@ -60,7 +60,7 @@ function readFromLocal (fullPath) {
     var map = param.urls,  charset = param.charset;
     var longestMatchNum = -1 , longestMatchPos = null;
     for(k in map){
-        var matchN = fullPath.replace('\\', '/').indexOf(k);
+        var matchN = fullPath.replace(/\\/g, '/').indexOf(k);
         if(matchN > longestMatchNum) {
             longestMatchNum = matchN; 
             longestMatchPos = k;
