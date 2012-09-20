@@ -160,6 +160,7 @@ exports = module.exports = function(prjDir, urls, options){
             var fullPath = filterUrl(path.join(prefix, files[i]));
             var fileContent = readFromLocal(fullPath);
             if(!fileContent){
+                console.log('file not in local"'+fullPath);
                 if(prevNeedHttp){
                     needHttpGet += ',' + file;
                     continue;
@@ -168,6 +169,9 @@ exports = module.exports = function(prjDir, urls, options){
                 needHttpGet = file;
                 continue;
             }
+            if(prevNeedHttp){
+                reqArray.push({file: needHttpGet, ready: false});
+            }
             prevNeedHttp = false;
             reqArray.push({file: file, content: fileContent, ready: true});
         }
@@ -175,6 +179,7 @@ exports = module.exports = function(prjDir, urls, options){
         if(prevNeedHttp){
             reqArray.push({file: needHttpGet, ready:false});
         }
+        console.log('array size: '+reqArray.length);
 
         var reqPath = prefix + param.servlet + '?';
         for(var i = 0, len = reqArray.length; i < len; i++){
@@ -183,9 +188,9 @@ exports = module.exports = function(prjDir, urls, options){
             }
             (function(id) {
                 console.log('define request: '+ reqArray[i].file);
-                http.get({host: param.host, port: 80, path: url}, function(resp) {
+                http.get({host: param.host, port: 80, path: reqPath + reqArray[id].file}, function(resp) {
                     var buffs = [];
-                    console.log('request: ' + reqPath+reqArray[id].file);
+                    console.log('request: ' + reqPath + reqArray[id].file);
                     resp.on('data', function(chunk) {
                         buffs.push(chunk);
                     });
