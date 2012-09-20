@@ -23,14 +23,14 @@ var http = require('http')
 var param = {
     urls: {},
     host : 'assets.taobaocdn.com',
-    servlet : '/?',
+    servlet : '?',
     seperator: ',',
     charset: 'gbk',
     filter : {
         '\\?t=\\d+':'',
         '-min\\.js$':'\\.js'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml\\.less',
     prjDir: ''
 }; 
 
@@ -56,10 +56,11 @@ function filterUrl(url){
  * 根据一个文件的全路径(如：/xxx/yyy/aa.js)从本地文件系统获取内容
  */
 function readFromLocal (fullPath) {
+    console.log('local file:'+ fullPath);
     var map = param.urls,  charset = param.charset;
     var longestMatchNum = -1 , longestMatchPos = null;
     for(k in map){
-        var matchN = fullPath.indexOf(k);
+        var matchN = fullPath.replace('\\', '/').indexOf(k);
         if(matchN > longestMatchNum) {
             longestMatchNum = matchN; 
             longestMatchPos = k;
@@ -72,6 +73,7 @@ function readFromLocal (fullPath) {
         var dir = dirs[i];
         var revPath = fullPath.slice(longestMatchPos.length, fullPath.length);
         var absPath = path.normalize(path.join(param.prjDir, dir, revPath));
+        console.log('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             return adaptCharset(buff, param.charset);
@@ -122,7 +124,7 @@ exports = module.exports = function(prjDir, urls, options){
             }
 
             //本地没有，从服务器获取  
-            //console.log('send http request:'+ param.host+ url);
+            console.log('send http request:'+ param.host+ url);
             http.get({host: param.host, port: 80, path: url}, function(resp) {
                 var buffs = [];
                 resp.on('data', function(chunk) {
@@ -137,15 +139,15 @@ exports = module.exports = function(prjDir, urls, options){
                     return;
                 });
             }).on('error',function(e){
-                //console.log('Networking error:' + e.message);
+                console.log('Networking error:' + e.message);
                 return;
             });
             return;
         }
         prefix = url.substring(0, prefix);
-        //console.log(prefix+'|'+param.servlet);
+        console.log(prefix+'|'+param.servlet);
         var files = url.substring(prefix.length + param.servlet.length + 1, url.length);
-        //console.log(files);
+        console.log(files);
         files = files.split(param.seperator, 1000);
 
         var reqArray = [];
@@ -180,10 +182,10 @@ exports = module.exports = function(prjDir, urls, options){
                 continue;
             }
             (function(id) {
-                //console.log('define request: '+ reqArray[i].file);
+                console.log('define request: '+ reqArray[i].file);
                 http.get({host: param.host, port: 80, path: url}, function(resp) {
                     var buffs = [];
-                    //console.log('request: ' + reqPath+reqArray[id].file);
+                    console.log('request: ' + reqPath+reqArray[id].file);
                     resp.on('data', function(chunk) {
                         buffs.push(chunk);
                     });
@@ -194,7 +196,7 @@ exports = module.exports = function(prjDir, urls, options){
                         sendData();
                     });
                 }).on('error',function(e){
-                    //console.log('Networking error:' + e.message);
+                    console.log('Networking error:' + e.message);
                 });
             })(i);
         }
