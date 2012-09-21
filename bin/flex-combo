@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+
+var util = require("util");
+var flexCombo = require('../flex-combo');
+//console.log(process.argv);
+var prefix = process.argv[2] ? process.argv[2] : '/';
+var config ='{"'+prefix+'":"."}';
+var param = JSON.parse(config);
+//console.log(config);
+
+var http = require('http');
+var comboInst = flexCombo(process.cwd(), param);
+http.createServer(function (req, res) {
+    comboInst(req, res, function(){
+        res.writeHead(404, {'Content-Type': 'text/plain'});
+        res.end('Your combo file not found.');
+    })
+}).listen(80, '127.0.0.1');
+console.log('Flex Combo Server running at http://127.0.0.1/');
