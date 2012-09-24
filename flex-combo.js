@@ -5,6 +5,8 @@ var http = require('http')
 , iconv = require('iconv-lite')
 , util = require('util')
 , joinbuffers = require('joinbuffers')
+, mkdirp = require('mkdirp')
+, crypto = require('crypto')
 , parse = require('url').parse; 
 
 /**
@@ -30,12 +32,11 @@ var param = {
         '\\?t=\\d+':'',
         '-min\\.js$':'\\.js'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml\\.less',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
     prjDir: ''
 }; 
 
-function adaptCharset(buff, outCharset){
-    var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+function adaptCharset(buff, outCharset, charset){
     if (charset === outCharset) {
         return buff;
     }
@@ -76,7 +77,8 @@ function readFromLocal (fullPath) {
         console.log('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
-            return adaptCharset(buff, param.charset);
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            return adaptCharset(buff, param.charset, charset);
         }
     }
     return null;
@@ -89,11 +91,39 @@ var merge = function(dest, src) {
     return dest;
 }
 
+var cacheFile = function(fullPath, content, encode){
+    var absPath = path.join(param.cacheDir, fullPath);
+    var lastDir = absPath.slice(0, absPath.lastIndexOf('/'));
+    console.log(lastDir);
+    if(!fs.existsSync(lastDir)){
+        console.log(' is not exist');
+        mkdirp(lastDir, function(){
+            fs.writeFileSync(absPath, content, encode);
+        });
+        return;
+    }
+    fs.writeFileSync(absPath, content, encode);
+}
+
+var readFromCache = function(fullPath){
+    var absPath = path.join(param.cacheDir, fullPath);
+    if(fs.existsSync(absPath)){
+        var buff = fs.readFileSync(absPath);
+        var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+        return adaptCharset(buff, param.charset, charset);
+    }
+    return null;
+}
 
 exports = module.exports = function(prjDir, urls, options){
     if(urls){
         param.urls = merge(param.urls, urls);
     }
+    param.cacheDir = cacheDir = path.join(prjDir , '.flex-combo/cache');
+    if(!fs.existsSync(cacheDir)){
+        mkdirp(cacheDir);
+    }
+
     if(options){
         options.urls = param.urls;
         param = merge(param, options);
@@ -123,10 +153,20 @@ exports = module.exports = function(prjDir, urls, options){
                 return;
             }
 
+            var cachedFile = readFromCache(url);
+            if(cachedFile){
+                res.end(cachedFile);
+                return;
+            }
+
             //本地没有，从服务器获取  
             console.log('send http request:'+ param.host+ url);
             http.get({host: param.host, port: 80, path: url}, function(resp) {
                 var buffs = [];
+                if(resp.statusCode !== 200){
+                    res.end('File ' + url + ' not found.');
+                    return;
+                }
                 resp.on('data', function(chunk) {
                     buffs.push(chunk);
                 });
@@ -134,7 +174,8 @@ exports = module.exports = function(prjDir, urls, options){
                     var buff = joinbuffers(buffs);
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
 
-                    var singleFileContent = adaptCharset(buff, param.charset);
+                    var singleFileContent = adaptCharset(buff, param.charset, charset);
+                    cacheFile(url, buff, charset);
                     res.end(singleFileContent );
                     return;
                 });
@@ -186,9 +227,24 @@ exports = module.exports = function(prjDir, urls, options){
             if(reqArray[i].ready){
                 continue;
             }
+            var cacheName = crypto.createHash('md5').update(reqArray[i].file).digest('hex');
+            var cachedContent = readFromCache('/' + cacheName);
+            if(cachedContent){
+                reqArray[i].content = cachedContent;
+                reqArray[i].ready = true;
+                continue;
+            }
+            
             (function(id) {
                 console.log('define request: '+ reqArray[i].file);
                 http.get({host: param.host, port: 80, path: reqPath + reqArray[id].file}, function(resp) {
+                    if(resp.statusCode !== 200){
+                        reqArray[id].ready = true;
+                        reqArray[id].content = 'File'+ reqArray[id].file +' not found.';
+                        sendData();
+                        return;
+                    }
+
                     var buffs = [];
                     console.log('request: ' + reqPath + reqArray[id].file);
                     resp.on('data', function(chunk) {
@@ -197,7 +253,10 @@ exports = module.exports = function(prjDir, urls, options){
                     resp.on('end', function() {
                         reqArray[id].ready = true;
                         var buff = joinbuffers(buffs);
-                        reqArray[id].content = adaptCharset(buff, param.charset);
+                        var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+                        reqArray[id].content = adaptCharset(buff, param.charset, charset);
+                        var fileName = crypto.createHash('md5').update(reqArray[id].file).digest('hex');
+                        cacheFile('/'+fileName, buff, charset);
                         sendData();
                     });
                 }).on('error',function(e){
