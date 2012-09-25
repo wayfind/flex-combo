@@ -30,9 +30,9 @@ var param = {
     charset: 'gbk',
     filter : {
         '\\?t=\\d+':'',
-        '-min\\.js$':'\\.js'
+        '-min\\.js$':'\.js'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.html',
     prjDir: ''
 }; 
 
@@ -47,8 +47,8 @@ function adaptCharset(buff, outCharset, charset){
 function filterUrl(url){
     var filter = param.filter;
     var filtered = url;
-    for(fk in filter){
-        filtered = filtered.replace(fk, filter[fk]);
+    for(var fk in filter){
+        filtered = filtered.replace(new RegExp(fk), filter[fk]);
     }
     return filtered;
 }
@@ -59,6 +59,7 @@ function filterUrl(url){
 function readFromLocal (fullPath) {
     console.log('local file:'+ fullPath);
     var map = param.urls,  charset = param.charset;
+    fullPath = filterUrl(fullPath);
     var longestMatchNum = -1 , longestMatchPos = null;
     for(k in map){
         var matchN = fullPath.replace(/\\/g, '/').indexOf(k);
@@ -119,7 +120,8 @@ exports = module.exports = function(prjDir, urls, options){
     if(urls){
         param.urls = merge(param.urls, urls);
     }
-    param.cacheDir = cacheDir = path.join(prjDir , '.flex-combo/cache');
+    var userHome = process.env.HOME || process.env.HOMEPATH;//兼容windows
+    param.cacheDir = cacheDir = path.join(userHome, '.flex-combo/cache');
     if(!fs.existsSync(cacheDir)){
         mkdirp(cacheDir);
     }
@@ -240,7 +242,7 @@ exports = module.exports = function(prjDir, urls, options){
                 http.get({host: param.host, port: 80, path: reqPath + reqArray[id].file}, function(resp) {
                     if(resp.statusCode !== 200){
                         reqArray[id].ready = true;
-                        reqArray[id].content = 'File'+ reqArray[id].file +' not found.';
+                        reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
                         return;
                     }

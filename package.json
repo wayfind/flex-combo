@@ -1,6 +1,6 @@
 {
   "name": "flex-combo",
-  "version": "0.1.5",
+  "version": "0.1.8",
   "description": "The Flex-combo is combo tool designed for web front-end developer. It support various kinds of combo format by modify configuration(eg. yahoo combo).",
   "main": "flex-combo.js",
   "bin" : {"flex-combo": "./bin/flex-combo"},
@@ -10,7 +10,9 @@
   "dependencies": {
     "iconv-lite": "~0.2.5",
     "is-utf8": "~0.2.0",
-    "joinbuffers": "~0.1.1"
+    "joinbuffers": "~0.1.1",
+    "crypto":"0.0.3",
+    "mkdirp":"0.3.4"
   },
   "devDependencies": {},
   "scripts": {
