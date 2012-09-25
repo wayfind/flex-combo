@@ -29,7 +29,7 @@ var param = {
     seperator: ',',
     charset: 'gbk',
     filter : {
-        '\\?t=\\d+':'',
+        '\\?t=.+':'',
         '-min\\.js$':'\.js'
     },
     supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.html',
