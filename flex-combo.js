@@ -32,7 +32,7 @@ var param = {
         '\\?t=.+':'',
         '-min\\.js$':'\.js'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.html',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
     prjDir: ''
 }; 
 

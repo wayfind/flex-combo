@@ -33,6 +33,12 @@ Import module and create module instance and pass a configuration like this:
 It meas if a http request start with `http://xxxx.com/test` flex-combo will find file in `./test' directory.
 
 #Command line
-If install flex-combo as global mode `npm install -g flex-combo`. There is a command line `flex-combo [URL prefix]` to simplely start a combo server base current directory.
+If install flex-combo as global mode `npm install -g flex-combo`. There is a command line `flex-combo [options]` to simplely start a combo server base current directory.
 
+    ##YUI combo
+    `flex-combo -H yui.yahooapis.com -s combo -e \& -c utf-8`
+    
+    ##Taobao combo
+    `flex-combo` 
+see `flex-combo -h` for more info.
 

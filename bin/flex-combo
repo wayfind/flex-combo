@@ -8,7 +8,8 @@ var program = require('commander');
 var helpInfo = {
     'dir':['本地目录。默认情况下是执行命令的当前目录。','Directory'],
     'url':['本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。','URL The current directory will mapped to.'],
-    'servlet':['Combo的servlet。对于淘宝而言是"?",yahoo为"combo"。默认为"?"',''],
+    'servlet':['Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"',''],
+    'host':['服务器域名。如果文件不在本地，将到此域名处请求文件。',''],
     'seperator':['文件分隔符。默认为","'],
     'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。',''],
     'charset':['http响应数据的编码方式。默认为gbk。', ''],
@@ -16,17 +17,18 @@ var helpInfo = {
     };
 var langIndex = (process.env.LANG.indexOf('zh') === 0) ? 0 : 1;
 program
-  .version('0.2.0')
+  .version('0.2.3')
   .option('-d, --dir [string]', helpInfo.dir[langIndex])
   .option('-u, --url [string]', helpInfo.url[langIndex])
+  .option('-H, --host [string]', helpInfo.host[langIndex])
   .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
-  .option('-sep, --seperator [string]', helpInfo.seperator[langIndex])
+  .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
   .option('-c, --charset [string]', helpInfo.charset[langIndex])
   .parse(process.argv);
 
 var url = program.url || '/';
 var dir = program.dir || '.';
-var config = '{"' + url + '":"' + dir + '"}';
+var config = '{"url" : {"' + url + '":"' + dir + '"}}';
 var param = JSON.parse(config);
 
 if(program.servlet){
@@ -38,12 +40,16 @@ if(program.seperator){
 if(program.charset){
     param.charset = program.charset;
 }
+if(program.host){
+    param.host = program.host;
+}
+//console.log(param)";
 
 var util = require("util");
 var flexCombo = require('../flex-combo');
 
 var http = require('http');
-var comboInst = flexCombo(process.cwd(), param);
+var comboInst = flexCombo(process.cwd(), param.url, param);
 http.createServer(function (req, res) {
     comboInst(req, res, function(){
         res.writeHead(404, {'Content-Type': 'text/plain'});
