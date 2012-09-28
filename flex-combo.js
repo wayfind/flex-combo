@@ -53,6 +53,9 @@ function filterUrl(url){
     return filtered;
 }
 
+function isBinFile(fileName){
+    return !/.js$|.css$|.less$/.test(fileName);
+}
 /*
  * 根据一个文件的全路径(如：/xxx/yyy/aa.js)从本地文件系统获取内容
  */
@@ -78,6 +81,9 @@ function readFromLocal (fullPath) {
         console.log('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
+            if(isBinFile(absPath)){
+                return buff;
+            }
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             return adaptCharset(buff, param.charset, charset);
         }
@@ -110,6 +116,9 @@ var readFromCache = function(fullPath){
     var absPath = path.join(param.cacheDir, fullPath);
     if(fs.existsSync(absPath)){
         var buff = fs.readFileSync(absPath);
+        if(isBinFile(absPath)){
+            return buff;
+        }
         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
         return adaptCharset(buff, param.charset, charset);
     }
@@ -175,8 +184,17 @@ exports = module.exports = function(prjDir, urls, options){
                 });
                 resp.on('end', function() {
                     var buff = joinbuffers(buffs);
+                    
+                    //fix 80% situation bom problem.quick and dirty
+                    if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
+                        buff = buff.slice(3, buff.length);
+                    }
+                    if(isBinFile(url)){
+                        cacheFile(url, buff);
+                        res.end(buff);
+                        return;
+                    }
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-
                     var singleFileContent = adaptCharset(buff, param.charset, charset);
                     cacheFile(url, buff, charset);
                     res.end(singleFileContent );
@@ -261,10 +279,14 @@ exports = module.exports = function(prjDir, urls, options){
                         if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                             buff = buff.slice(3, buff.length);
                         }
-
+                        var fileName = crypto.createHash('md5').update(reqArray[id].file).digest('hex');
+                        if(isBinFile(reqArray[id].file)){
+                            reqArray[id].content = buff;
+                            cacheFile('/'+fileName, buff);
+                            return;
+                        }
                         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                         reqArray[id].content = adaptCharset(buff, param.charset, charset);
-                        var fileName = crypto.createHash('md5').update(reqArray[id].file).digest('hex');
                         cacheFile('/'+fileName, buff, charset);
                         sendData();
                     });
