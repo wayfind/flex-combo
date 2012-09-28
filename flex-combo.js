@@ -131,7 +131,8 @@ exports = module.exports = function(prjDir, urls, options){
         param = merge(param, options);
     }
     param.prjDir = prjDir;
-   var fileReg = new RegExp(param.supportedFile);
+    console.log(param);
+    var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
         if(req.headers.host === param.host){
@@ -255,6 +256,12 @@ exports = module.exports = function(prjDir, urls, options){
                     resp.on('end', function() {
                         reqArray[id].ready = true;
                         var buff = joinbuffers(buffs);
+
+                        //fix 80% situation bom problem.quick and dirty
+                        if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
+                            buff = buff.slice(3, buff.length);
+                        }
+
                         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                         reqArray[id].content = adaptCharset(buff, param.charset, charset);
                         var fileName = crypto.createHash('md5').update(reqArray[id].file).digest('hex');
