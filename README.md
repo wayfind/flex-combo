@@ -16,7 +16,7 @@ node ./test.js
 Open you browser visit  
 `http://127.0.0.1:1337/test/js/??js1.js,js2.js,js3.js`
 
-#Useage
+#Usage
 Import module and create module instance and pass a configuration like this:  
 
     var http = require('http');

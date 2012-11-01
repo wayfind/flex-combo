@@ -15,7 +15,8 @@ var helpInfo = {
     'charset':['http响应数据的编码方式。默认为gbk。', ''],
     'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','']
     };
-var langIndex = (process.env.LANG.indexOf('zh') === 0) ? 0 : 1;
+var LANG = process.env.LANG || 'zh';
+var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
 program
   .version('0.2.3')
   .option('-d, --dir [string]', helpInfo.dir[langIndex])
