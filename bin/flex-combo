@@ -13,18 +13,20 @@ var helpInfo = {
     'seperator':['文件分隔符。默认为","'],
     'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。',''],
     'charset':['http响应数据的编码方式。默认为gbk。', ''],
-    'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','']
+    'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。',''],
+    'port':'指定flex-combo运行的端口号。默认是80'
     };
 var LANG = process.env.LANG || 'zh';
 var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
 program
-  .version('0.2.3')
+  .version('0.2.8')
   .option('-d, --dir [string]', helpInfo.dir[langIndex])
   .option('-u, --url [string]', helpInfo.url[langIndex])
   .option('-H, --host [string]', helpInfo.host[langIndex])
   .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
   .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
   .option('-c, --charset [string]', helpInfo.charset[langIndex])
+  .option('-p, --port [string]', helpInfo.port[langIndex])
   .parse(process.argv);
 
 var url = program.url || '/';
@@ -44,10 +46,12 @@ if(program.charset){
 if(program.host){
     param.host = program.host;
 }
+
 console.log(param);
 
 var util = require("util");
 var flexCombo = require('../flex-combo');
+var port = program.port || 80;
 
 var http = require('http');
 var comboInst = flexCombo(process.cwd(), param.urls, param);
@@ -56,8 +60,8 @@ http.createServer(function (req, res) {
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Your combo file not found.');
     })
-}).listen(80, '0.0.0.0');
+}).listen(port, '0.0.0.0');
 var end = new Date();
 var spend = end.getTime()-begin.getTime();
-console.log('Flex Combo Server running at http://127.0.0.1/');
+console.log('Flex Combo Server running at http://127.0.0.1:'+port);
 console.log('Server starup in ' +spend+' ms');

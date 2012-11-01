@@ -7,7 +7,8 @@ var http = require('http')
 , joinbuffers = require('joinbuffers')
 , mkdirp = require('mkdirp')
 , crypto = require('crypto')
-, parse = require('url').parse; 
+, parse = require('url').parse 
+, mime = require('mime');
 
 /**
   Yahoo Combo:
@@ -30,7 +31,7 @@ var param = {
     charset: 'gbk',
     filter : {
         '\\?t=.+':'',
-        '-min\\.js$':'\.js'
+        '-min\\.js$':'.js'
     },
     supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
     prjDir: ''
@@ -158,6 +159,7 @@ exports = module.exports = function(prjDir, urls, options){
             }
 
             var filteredUrl = filterUrl(url);
+            res.setHeader('Content-Type', mime.lookup(filteredUrl));
             var singleFileContent = readFromLocal(filteredUrl);
 
             if(singleFileContent){
@@ -217,9 +219,14 @@ exports = module.exports = function(prjDir, urls, options){
         var needHttpGet = '';
         for(var i = 0, len = files.length; i < len; i++){
             var file = files[i];
+            
             //combo URL有时候会多一个逗号
             if(file === "") continue;
             var fullPath = filterUrl(path.join(prefix, files[i]));
+            if(i === 0 ){
+                res.setHeader('Content-Type', mime.lookup(fullPath));
+            }
+
             var fileContent = readFromLocal(fullPath);
             if(!fileContent){
                 console.log('file not in local"'+fullPath);
