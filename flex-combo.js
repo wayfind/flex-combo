@@ -66,9 +66,8 @@ function readFromLocal (fullPath) {
     fullPath = filterUrl(fullPath);
     var longestMatchNum = -1 , longestMatchPos = null;
     for(k in map){
-        var matchN = fullPath.replace(/\\/g, '/').indexOf(k);
-        if(matchN > longestMatchNum) {
-            longestMatchNum = matchN; 
+        if(fullPath.replace(/\\/g, '/').indexOf(k) === 0 && longestMatchNum < k.length){
+            longestMatchNum = k.length;
             longestMatchPos = k;
         }
     }
