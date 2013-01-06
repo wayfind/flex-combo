@@ -31,7 +31,8 @@ var param = {
     charset: 'gbk',
     filter : {
         '\\?t=.+':'',
-        '-min\\.js$':'.js'
+        '-min\\.js$':'.js',
+        '-min\\.css$':'.css'
     },
     supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
     prjDir: ''
