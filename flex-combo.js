@@ -7,8 +7,11 @@ var http = require('http')
 , joinbuffers = require('joinbuffers')
 , mkdirp = require('mkdirp')
 , crypto = require('crypto')
-, parse = require('url').parse 
+, parse = require('url').parse
+, beautify = require('./beautify.js').js_beautify
 , mime = require('mime');
+
+var debug = require('debug')('flex-combo:comboServer');
 
 /**
   Yahoo Combo:
@@ -62,7 +65,7 @@ function isBinFile(fileName){
  * 根据一个文件的全路径(如：/xxx/yyy/aa.js)从本地文件系统获取内容
  */
 function readFromLocal (fullPath) {
-    console.log('local file:'+ fullPath);
+    debug('local file:'+ fullPath);
     var map = param.urls,  charset = param.charset;
     fullPath = filterUrl(fullPath);
     var longestMatchNum = -1 , longestMatchPos = null;
@@ -79,7 +82,7 @@ function readFromLocal (fullPath) {
         var dir = dirs[i];
         var revPath = fullPath.slice(longestMatchPos.length, fullPath.length);
         var absPath = path.normalize(path.join(param.prjDir, dir, revPath));
-        console.log('read file:'+ absPath);
+        debug('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             if(isBinFile(absPath)){
@@ -102,9 +105,9 @@ var merge = function(dest, src) {
 var cacheFile = function(fullPath, content, encode){
     var absPath = path.join(param.cacheDir, fullPath);
     var lastDir = absPath.slice(0, absPath.lastIndexOf('/'));
-    console.log(lastDir);
+    debug(lastDir);
     if(!fs.existsSync(lastDir)){
-        console.log(' is not exist');
+        debug(' is not exist');
         mkdirp(lastDir, function(){
             fs.writeFileSync(absPath, content, encode);
         });
@@ -127,21 +130,34 @@ var readFromCache = function(fullPath){
 }
 
 exports = module.exports = function(prjDir, urls, options){
-    if(urls){
-        param.urls = merge(param.urls, urls);
-    }
     var userHome = process.env.HOME || process.env.HOMEPATH;//兼容windows
-    param.cacheDir = cacheDir = path.join(userHome, '.flex-combo/cache');
+    var cacheDir = path.join(userHome, '.flex-combo/cache');
     if(!fs.existsSync(cacheDir)){
         mkdirp(cacheDir);
     }
+    var userConfigPath = path.join(userHome, '.flex-combo/config.json');
+    if(!fs.existsSync(userConfigPath)){
+        fs.writeFileSync(userConfigPath, beautify(JSON.stringify(param)));
+    }
+    else{
+        var paramStr = fs.readFileSync(userConfigPath);
+        paramStr.toString().replace(/[\n\r]/g, '');
+        param = JSON.parse(paramStr);
+    }
 
+    param.cacheDir = cacheDir;
+    if(urls){
+        param.urls = merge(param.urls, urls);
+    }
     if(options){
         options.urls = param.urls;
         param = merge(param, options);
     }
     param.prjDir = prjDir;
-    console.log(param);
+    debug(param);
+
+
+
     var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
@@ -174,7 +190,7 @@ exports = module.exports = function(prjDir, urls, options){
             }
 
             //本地没有，从服务器获取  
-            console.log('send http request:'+ param.host+ url);
+            debug('send http request:'+ param.host+ url);
             http.get({host: param.host, port: 80, path: url}, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
@@ -203,15 +219,15 @@ exports = module.exports = function(prjDir, urls, options){
                     return;
                 });
             }).on('error',function(e){
-                console.log('Networking error:' + e.message);
+                    debug('Networking error:' + e.message);
                 return;
             });
             return;
         }
         prefix = url.substring(0, prefix);
-        console.log(prefix+'|'+param.servlet);
+        debug(prefix+'|'+param.servlet);
         var files = url.substring(prefix.length + param.servlet.length + 1, url.length);
-        console.log(files);
+        debug(files);
         files = files.split(param.seperator, 1000);
 
         var reqArray = [];
@@ -229,7 +245,7 @@ exports = module.exports = function(prjDir, urls, options){
 
             var fileContent = readFromLocal(fullPath);
             if(!fileContent){
-                console.log('file not in local"'+fullPath);
+                debug('file not in local"'+fullPath);
                 if(prevNeedHttp){
                     needHttpGet += ',' + file;
                     continue;
@@ -248,7 +264,7 @@ exports = module.exports = function(prjDir, urls, options){
         if(prevNeedHttp){
             reqArray.push({file: needHttpGet, ready:false});
         }
-        console.log('array size: '+reqArray.length);
+        debug('array size: '+reqArray.length);
 
         var reqPath = prefix + param.servlet + '?';
         for(var i = 0, len = reqArray.length; i < len; i++){
@@ -264,7 +280,7 @@ exports = module.exports = function(prjDir, urls, options){
             }
             
             (function(id) {
-                console.log('define request: '+ reqArray[i].file);
+                debug('define request: '+ reqArray[i].file);
                 http.get({host: param.host, port: 80, path: reqPath + reqArray[id].file}, function(resp) {
                     if(resp.statusCode !== 200){
                         reqArray[id].ready = true;
@@ -274,7 +290,7 @@ exports = module.exports = function(prjDir, urls, options){
                     }
 
                     var buffs = [];
-                    console.log('request: ' + reqPath + reqArray[id].file);
+                    debug('request: ' + reqPath + reqArray[id].file);
                     resp.on('data', function(chunk) {
                         buffs.push(chunk);
                     });
@@ -298,7 +314,7 @@ exports = module.exports = function(prjDir, urls, options){
                         sendData();
                     });
                 }).on('error',function(e){
-                    console.log('Networking error:' + e.message);
+                    debug('Networking error:' + e.message);
                 });
             })(i);
         }

@@ -3,6 +3,7 @@
 
 var begin = new Date();
 var util = require('util');
+var debug = require('debug')('flex-combo:bin');
 
 var program = require('commander');
 var helpInfo = {
@@ -47,7 +48,7 @@ if(program.host){
     param.host = program.host;
 }
 
-console.log(param);
+debug(param);
 
 var util = require("util");
 var flexCombo = require('../flex-combo');
@@ -63,5 +64,5 @@ http.createServer(function (req, res) {
 }).listen(port, '0.0.0.0');
 var end = new Date();
 var spend = end.getTime()-begin.getTime();
-console.log('Flex Combo Server running at http://127.0.0.1:'+port);
-console.log('Server starup in ' +spend+' ms');
+debug('Flex Combo Server running at http://127.0.0.1:'+port);
+debug('Server starup in ' +spend+' ms');
