@@ -32,8 +32,9 @@ program
 
 var url = program.url || '/';
 var dir = program.dir || '.';
-var config = '{"urls" : {"' + url + '":"' + dir + '"}}';
-var param = JSON.parse(config);
+
+var param = {urls:{}};
+param.urls[url] = dir;
 
 if(program.servlet){
     param.servlet = program.servlet;
@@ -49,7 +50,6 @@ if(program.host){
 }
 
 debug(param);
-
 var util = require("util");
 var flexCombo = require('../flex-combo');
 var port = program.port || 80;

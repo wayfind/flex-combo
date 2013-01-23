@@ -1,1 +1,1 @@
-jsfile1
+中文jsfile1

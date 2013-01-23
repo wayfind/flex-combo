@@ -38,7 +38,8 @@ var param = {
         '-min\\.css$':'.css'
     },
     supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
-    prjDir: ''
+    prjDir: '',
+    urlBasedCharset:{}
 }; 
 
 function adaptCharset(buff, outCharset, charset){
@@ -61,27 +62,48 @@ function filterUrl(url){
 function isBinFile(fileName){
     return !/.js$|.css$|.less$/.test(fileName);
 }
+
+/*
+ * 根据传入的返回最长匹配的目录映射
+ */
+function longgestMatchedDir(fullPath) {
+    var map = param.urls;
+    var longestMatchNum = -1 , longestMatchPos = null;
+    for (k in map) {
+        if (fullPath.replace(/\\/g, '/').indexOf(k) === 0 && longestMatchNum < k.length) {
+            longestMatchNum = k.length;
+            longestMatchPos = k;
+        }
+    }
+    return longestMatchPos;
+}
+
 /*
  * 根据一个文件的全路径(如：/xxx/yyy/aa.js)从本地文件系统获取内容
  */
 function readFromLocal (fullPath) {
     debug('local file:'+ fullPath);
-    var map = param.urls,  charset = param.charset;
+
     fullPath = filterUrl(fullPath);
-    var longestMatchNum = -1 , longestMatchPos = null;
-    for(k in map){
-        if(fullPath.replace(/\\/g, '/').indexOf(k) === 0 && longestMatchNum < k.length){
-            longestMatchNum = k.length;
-            longestMatchPos = k;
-        }
-    }
+    var longestMatchPos = longgestMatchedDir(fullPath);
     if(!longestMatchPos){ return null }
 
+    //找到最长匹配的配置，顺序遍历已定义好的目录。多个目录用逗号","分隔。
+    var map = param.urls;
     var dirs = map[longestMatchPos].split(',');
     for (var i = 0, len = dirs.length; i < len; i++){
         var dir = dirs[i];
         var revPath = fullPath.slice(longestMatchPos.length, fullPath.length);
-        var absPath = path.normalize(path.join(param.prjDir, dir, revPath));
+        var absPath = '';
+
+        //如果是绝对路径，直接使用
+        if(dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)){
+            absPath = path.normalize(path.join(dir, revPath));
+        }
+        else{
+            absPath = path.normalize(path.join(param.prjDir, dir, revPath));
+        }
+
         debug('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
@@ -89,7 +111,14 @@ function readFromLocal (fullPath) {
                 return buff;
             }
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-            return adaptCharset(buff, param.charset, charset);
+
+            //允许为某个url特别指定编码
+            var outputCharset = param.charset;
+            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+                outputCharset = param.urlBasedCharset[longestMatchPos];
+            }
+
+            return adaptCharset(buff, outputCharset, charset);
         }
     }
     return null;
@@ -124,7 +153,16 @@ var readFromCache = function(fullPath){
             return buff;
         }
         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-        return adaptCharset(buff, param.charset, charset);
+        fullPath = filterUrl(fullPath);
+        var longestMatchPos = longgestMatchedDir(fullPath);
+        if(!longestMatchPos){ return null }
+
+        //允许为某个url特别指定编码
+        var outputCharset = param.charset;
+        if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+            outputCharset = param.urlBasedCharset[longestMatchPos];
+        }
+        return adaptCharset(buff, outputCharset, charset);
     }
     return null;
 }
@@ -137,6 +175,9 @@ exports = module.exports = function(prjDir, urls, options){
     }
     var userConfigPath = path.join(userHome, '.flex-combo/config.json');
     if(!fs.existsSync(userConfigPath)){
+        if(!fs.existsSync(path.join(userHome,'.flex-combo'))){
+            mkdirp.sync(path.join(userHome,'.flex-combo'));
+        }
         fs.writeFileSync(userConfigPath, beautify(JSON.stringify(param)));
     }
     else{
@@ -156,8 +197,6 @@ exports = module.exports = function(prjDir, urls, options){
     param.prjDir = prjDir;
     debug(param);
 
-
-
     var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
@@ -166,6 +205,7 @@ exports = module.exports = function(prjDir, urls, options){
         }
         var url = req.url;
         var prefix = url.indexOf(param.servlet + '?');
+
         //不包含combo的servlet，认为是单一文件
         if(prefix === -1){
             //combo不处理html文件，但是需要接管其他资源
@@ -213,7 +253,17 @@ exports = module.exports = function(prjDir, urls, options){
                         return;
                     }
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-                    var singleFileContent = adaptCharset(buff, param.charset, charset);
+                    var longestMatchPos = longgestMatchedDir(filteredUrl);
+
+                    //允许为某个url特别指定编码
+                    var outputCharset = param.charset;
+                    if(longestMatchPos){
+                        if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+                            outputCharset = param.urlBasedCharset[longestMatchPos];
+                        }
+                    }
+
+                    var singleFileContent = adaptCharset(buff, outputCharset, charset);
                     cacheFile(url, buff, charset);
                     res.end(singleFileContent );
                     return;
@@ -225,8 +275,10 @@ exports = module.exports = function(prjDir, urls, options){
             return;
         }
         prefix = url.substring(0, prefix);
+
         debug(prefix+'|'+param.servlet);
         var files = url.substring(prefix.length + param.servlet.length + 1, url.length);
+
         debug(files);
         files = files.split(param.seperator, 1000);
 
