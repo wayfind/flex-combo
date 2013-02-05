@@ -134,9 +134,12 @@ var merge = function(dest, src) {
 var cacheFile = function(fullPath, content, encode){
     var absPath = path.join(param.cacheDir, fullPath);
     var lastDir = absPath.slice(0, absPath.lastIndexOf('/'));
-    debug(lastDir);
+    if(/[<>\\*\\?]+/g.test(lastDir)){
+        console.log('Exception file name: can not cache to %s',absPath);
+        return;
+    }
     if(!fs.existsSync(lastDir)){
-        debug(' is not exist');
+        debug('%s is not exist',lastDir);
         mkdirp(lastDir, function(){
             fs.writeFileSync(absPath, content, encode);
         });
@@ -203,7 +206,7 @@ exports = module.exports = function(prjDir, urls, options){
         if(req.headers.host === param.host){
             return;
         }
-        var url = req.url;
+        var url = req.url.replace(/http:\/\/.+?\//,'/');//兼容windows,windows平台下取得的req.url带http://部分
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
