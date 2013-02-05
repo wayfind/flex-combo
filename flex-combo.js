@@ -3,15 +3,14 @@ var http = require('http')
 , path = require('path')
 , isUtf8 = require('is-utf8')
 , iconv = require('iconv-lite')
-, util = require('util')
 , joinbuffers = require('joinbuffers')
 , mkdirp = require('mkdirp')
 , crypto = require('crypto')
-, parse = require('url').parse
 , beautify = require('./beautify.js').js_beautify
 , mime = require('mime');
 
-var debug = require('debug')('flex-combo:comboServer');
+var debug = require('debug')('flex-combo:debug');
+var debugInfo = require('debug')('flex-combo:info');
 
 /**
   Yahoo Combo:
@@ -33,7 +32,7 @@ var param = {
     seperator: ',',
     charset: 'gbk',
     filter : {
-        '\\?t=.+':'',
+        '\\?.+':'',
         '-min\\.js$':'.js',
         '-min\\.css$':'.css'
     },
@@ -104,10 +103,10 @@ function readFromLocal (fullPath) {
             absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         }
 
-        debug('read file:'+ absPath);
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             if(isBinFile(absPath)){
+                debugInfo('Local bin: %s', absPath);
                 return buff;
             }
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
@@ -117,7 +116,7 @@ function readFromLocal (fullPath) {
             if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
-
+            debugInfo('Local text:%s', absPath);
             return adaptCharset(buff, outputCharset, charset);
         }
     }
@@ -133,9 +132,9 @@ var merge = function(dest, src) {
 
 var cacheFile = function(fullPath, content, encode){
     var absPath = path.join(param.cacheDir, fullPath);
-    var lastDir = absPath.slice(0, absPath.lastIndexOf('/'));
-    if(/[<>\\*\\?]+/g.test(lastDir)){
-        console.log('Exception file name: can not cache to %s',absPath);
+    var lastDir = path.dirname(absPath);
+    if(/[<>\*\?]+/g.test(absPath)){
+        debugInfo('Exception file name: can not cache to %s',absPath);
         return;
     }
     if(!fs.existsSync(lastDir)){
@@ -153,18 +152,22 @@ var readFromCache = function(fullPath){
     if(fs.existsSync(absPath)){
         var buff = fs.readFileSync(absPath);
         if(isBinFile(absPath)){
+            debugInfo('Cached remote bin:%s',absPath);
             return buff;
         }
         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-        fullPath = filterUrl(fullPath);
-        var longestMatchPos = longgestMatchedDir(fullPath);
-        if(!longestMatchPos){ return null }
 
         //允许为某个url特别指定编码
         var outputCharset = param.charset;
-        if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
-            outputCharset = param.urlBasedCharset[longestMatchPos];
+        fullPath = filterUrl(fullPath);
+        var longestMatchPos = longgestMatchedDir(fullPath);
+        if(longestMatchPos){
+            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+                outputCharset = param.urlBasedCharset[longestMatchPos];
+            }
         }
+
+        debugInfo('Cached remote text:%s',absPath);
         return adaptCharset(buff, outputCharset, charset);
     }
     return null;
@@ -207,6 +210,7 @@ exports = module.exports = function(prjDir, urls, options){
             return;
         }
         var url = req.url.replace(/http:\/\/.+?\//,'/');//兼容windows,windows平台下取得的req.url带http://部分
+        debugInfo('Request: %s', url);
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
@@ -226,7 +230,7 @@ exports = module.exports = function(prjDir, urls, options){
                 return;
             }
 
-            var cachedFile = readFromCache(url);
+            var cachedFile = readFromCache(filteredUrl);
             if(cachedFile){
                 res.end(cachedFile);
                 return;
@@ -237,6 +241,7 @@ exports = module.exports = function(prjDir, urls, options){
             http.get({host: param.host, port: 80, path: url}, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
+                    debugInfo('Remote not found.');
                     res.end('File ' + url + ' not found.');
                     return;
                 }
@@ -250,11 +255,13 @@ exports = module.exports = function(prjDir, urls, options){
                     if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                         buff = buff.slice(3, buff.length);
                     }
-                    if(isBinFile(url)){
-                        cacheFile(url, buff);
+                    if(isBinFile(filteredUrl)){
+                        cacheFile(filteredUrl, buff);
+                        debugInfo('Remote bin file : %s',param.host+ url);
                         res.end(buff);
                         return;
                     }
+                    debugInfo('Remote text : %s',param.host+ url);
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                     var longestMatchPos = longgestMatchedDir(filteredUrl);
 
@@ -267,12 +274,12 @@ exports = module.exports = function(prjDir, urls, options){
                     }
 
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
-                    cacheFile(url, buff, charset);
+                    cacheFile(filteredUrl, buff, charset);
                     res.end(singleFileContent );
                     return;
                 });
             }).on('error',function(e){
-                    debug('Networking error:' + e.message);
+                    debugInfo('Networking error:' + e.message);
                 return;
             });
             return;
@@ -335,9 +342,9 @@ exports = module.exports = function(prjDir, urls, options){
             }
             
             (function(id) {
-                debug('define request: '+ reqArray[i].file);
                 http.get({host: param.host, port: 80, path: reqPath + reqArray[id].file}, function(resp) {
                     if(resp.statusCode !== 200){
+                        debugInfo('Remote not found : %s', 'define request: ', reqPath + reqArray[id].file);
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
@@ -363,6 +370,7 @@ exports = module.exports = function(prjDir, urls, options){
                             cacheFile('/'+fileName, buff);
                             return;
                         }
+                        debugInfo('Remote text:%s', reqPath + reqArray[id].file);
                         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                         reqArray[id].content = adaptCharset(buff, param.charset, charset);
                         cacheFile('/'+fileName, buff, charset);
