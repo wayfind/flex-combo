@@ -300,7 +300,7 @@ exports = module.exports = function(prjDir, urls, options){
             
             //combo URL有时候会多一个逗号
             if(file === "") continue;
-            var fullPath = filterUrl(path.join(prefix, files[i]));
+            var fullPath = filterUrl(prefix + files[i]);
             if(i === 0 ){
                 res.setHeader('Content-Type', mime.lookup(fullPath));
             }
