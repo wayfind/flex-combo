@@ -9,13 +9,14 @@ var program = require('commander');
 var helpInfo = {
     'dir':['本地目录。默认情况下是执行命令的当前目录。','Directory'],
     'url':['本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。','URL The current directory will mapped to.'],
-    'servlet':['Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"',''],
-    'host':['服务器域名。如果文件不在本地，将到此域名处请求文件。',''],
-    'seperator':['文件分隔符。默认为","'],
-    'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。',''],
-    'charset':['http响应数据的编码方式。默认为gbk。', ''],
-    'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。',''],
-    'port':'flex-combo运行的端口号。默认是80'
+    'servlet':['Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"','Combo servlet'],
+    'host':['服务器域名。如果文件不在本地，将到此域名处请求文件。','Combo server'],
+    'seperator':['文件分隔符。默认为","', 'Seperator'],
+    'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。','Filter'],
+    'charset':['http响应数据的编码方式。默认为gbk。', 'Charset'],
+    'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','Help'],
+    'port':['flex-combo运行的端口号。默认是80', 'Port'],
+    'forwardPrefix':['转发的url统一增加前缀', 'Add prefix to url while forwarding to Combo server']
     };
 var LANG = process.env.LANG || 'zh';
 var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
@@ -28,6 +29,7 @@ program
   .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
   .option('-c, --charset [string]', helpInfo.charset[langIndex])
   .option('-p, --port [string]', helpInfo.port[langIndex])
+  .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
   .parse(process.argv);
 
 var url = program.url || '/';
@@ -48,9 +50,9 @@ if(program.charset){
 if(program.host){
     param.host = program.host;
 }
-
-debug(param);
-var util = require("util");
+if(program.forwardPrefix){
+    param.forwardPrefix = program.forwardPrefix;
+}
 var flexCombo = require('../flex-combo');
 var port = program.port || 80;
 
