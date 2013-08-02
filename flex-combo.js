@@ -13,7 +13,29 @@ var http = require('http')
 
 var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
+var green   = '\u001b[32m';
+var red   = '\u001b[31m';
+var blue  = '\u001b[34m';
+var gray = '\u001b[37m';
+var yellow = '\u001b[33m';
+var reset = '\u001b[0m';
 
+function cosoleResp(type, c){
+    if(type == "Need"){
+        console.log('%s=>Need: %s%s%s  %s',green, reset, blue, c, reset);
+        return;
+    }
+    if(type == 'Not found'){
+        console.log(red+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+        return;
+    }
+    if(type == 'Actually'){
+        console.log(green+'  -'+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+        return;
+    }
+    console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+    return;
+}
 /**
  Yahoo Combo:
  <script src="http://yui.yahooapis.com/combo
@@ -42,7 +64,7 @@ var param = {
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
-    forwardPrefix:''
+    hosts:{'a.tbcdn.cn':'122.225.67.241', 'g.tbcdn.cn':'115.238.23.250'}
 };
 
 function adaptCharset(buff, outCharset, charset){
@@ -69,10 +91,12 @@ function filterUrl(url){
             }
         });
     }
+    cosoleResp('Actually', filtered);
     return filtered;
 }
 
 function isBinFile(fileName){
+    fileName = fileName.split('?')[0];
     return !/.js$|.css$|.less$/.test(fileName);
 }
 
@@ -80,6 +104,7 @@ function isBinFile(fileName){
  * 根据传入的返回最长匹配的目录映射
  */
 function longgestMatchedDir(fullPath) {
+    fullPath = fullPath.split('?')[0];
     var map = param.urls;
     var longestMatchNum = -1 , longestMatchPos = null;
     for (k in map) {
@@ -95,9 +120,7 @@ function longgestMatchedDir(fullPath) {
  * 根据一个文件的全路径(如：/xxx/yyy/aa.js)从本地文件系统获取内容
  */
 function readFromLocal (fullPath) {
-    debug('local file:'+ fullPath);
-
-    fullPath = filterUrl(fullPath);
+    fullPath = fullPath.split('?')[0];
     var longestMatchPos = longgestMatchedDir(fullPath);
     if(!longestMatchPos){ return null }
 
@@ -120,7 +143,7 @@ function readFromLocal (fullPath) {
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             if(isBinFile(absPath)){
-                debugInfo('Local bin: %s', absPath);
+                cosoleResp('Local', absPath);
                 return buff;
             }
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
@@ -130,7 +153,7 @@ function readFromLocal (fullPath) {
             if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
-            debugInfo('Local text:%s', absPath);
+            cosoleResp('Local', absPath);
             return adaptCharset(buff, outputCharset, charset);
         }
     }
@@ -161,32 +184,51 @@ var cacheFile = function(fullPath, content, encode){
     fs.writeFileSync(absPath, content);
 }
 
-var readFromCache = function(fullPath){
+var readFromCache = function(url, fullPath){
     var absPath = path.join(param.cacheDir, fullPath);
     if(fs.existsSync(absPath)){
         var buff = fs.readFileSync(absPath);
         if(isBinFile(absPath)){
-            debugInfo('Cached remote bin:%s',absPath);
+            cosoleResp('Cache', absPath);
             return buff;
         }
         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
 
         //允许为某个url特别指定编码
         var outputCharset = param.charset;
-        fullPath = filterUrl(fullPath);
-        var longestMatchPos = longgestMatchedDir(fullPath);
+        var longestMatchPos = longgestMatchedDir(url);
         if(longestMatchPos){
             if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
         }
-
-        debugInfo('Cached remote text:%s',absPath);
+        cosoleResp('Cache', absPath);
         return adaptCharset(buff, outputCharset, charset);
     }
     return null;
 }
 
+function buildRequestOption(url, req) {
+    var requestOption = {host: param.host, port: 80, path: url};
+    //处理IP加Request Header的情况
+    if (param.hostIp && param.headers) {
+        requestOption.host = param.hostIp;
+        requestOption.headers = param.headers;
+    }
+    if (param.hosts) {
+        for (hostName in param.hosts) {
+            if (req.headers.host == hostName) {
+                requestOption.host = param.hosts[hostName];
+                if (!requestOption.headers) {
+                    requestOption.headers = {};
+                }
+                requestOption.headers.host = hostName;
+                break;
+            }
+        }
+    }
+    return requestOption;
+}
 exports = module.exports = function(prjDir, urls, options){
     var userHome = process.env.HOME || process.env.HOMEPATH;//兼容windows
     var cacheDir = path.join(userHome, '.flex-combo/cache');
@@ -205,7 +247,6 @@ exports = module.exports = function(prjDir, urls, options){
         paramStr.toString().replace(/[\n\r]/g, '');
         param = merge(param, JSON.parse(paramStr));
     }
-    debug(util.inspect(param));
     param.cacheDir = cacheDir;
     if(urls){
         param.urls = merge(param.urls, urls);
@@ -220,14 +261,10 @@ exports = module.exports = function(prjDir, urls, options){
     var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
-        debug('laiel');
         if(req.headers.host === param.host){
             return;
         }
         var url = req.url.replace(/http:\/\/.+?\//,'/');//兼容windows,windows平台下取得的req.url带http://部分
-
-        debugInfo('Request: %s', url);
-
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
@@ -237,9 +274,8 @@ exports = module.exports = function(prjDir, urls, options){
                 next();
                 return;
             }
-
+            cosoleResp('Need', url);
             var filteredUrl = filterUrl(url);
-            debug('filteredUrl: %s, mime type: %s' ,filteredUrl, mime.lookup(filteredUrl.split('?')[0]));
             res.setHeader('Content-Type', mime.lookup(filteredUrl.split('?')[0]));
             var singleFileContent = readFromLocal(filteredUrl);
 
@@ -248,20 +284,21 @@ exports = module.exports = function(prjDir, urls, options){
                 return;
             }
 
-            var cachedFile = readFromCache(filteredUrl);
+            var fileName = crypto.createHash('md5').update(req.headers.host+url).digest('hex');
+            var cachedFile = readFromCache(filteredUrl, fileName);
             if(cachedFile){
                 res.end(cachedFile);
                 return;
             }
 
             //本地没有，从服务器获取
-            url = param.forwardPrefix + url;
-            debug('send http request:'+ param.host+ url);
-            http.get({host: param.host, port: 80, path: url}, function(resp) {
+            var requestOption = buildRequestOption(url, req);
+
+            http.get(requestOption, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
-                    debugInfo('Remote not found.');
-                    res.end('File ' + url + ' not found.');
+                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + requestOption.headers.host + reset + ')');
+                    res.end('File ' + requestOption.host + requestOption.path + ' not found.');
                     return;
                 }
                 resp.on('data', function(chunk) {
@@ -275,12 +312,13 @@ exports = module.exports = function(prjDir, urls, options){
                         buff = buff.slice(3, buff.length);
                     }
                     if(isBinFile(filteredUrl)){
-                        cacheFile(filteredUrl, buff);
-                        debugInfo('Remote bin file : %s',param.host+ url);
+                        var binfileName = crypto.createHash('md5').update(req.headers.host+requestOption.path).digest('hex');
+                        cacheFile(binfileName, buff);
+                        cosoleResp('Remote', requestOption.host + requestOption.path);
                         res.end(buff);
                         return;
                     }
-                    debugInfo('Remote text : %s',param.host+ url);
+                    cosoleResp('Remote', requestOption.host + requestOption.path);
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                     var longestMatchPos = longgestMatchedDir(filteredUrl);
 
@@ -293,7 +331,8 @@ exports = module.exports = function(prjDir, urls, options){
                     }
 
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
-                    cacheFile(filteredUrl, buff, charset);
+                    var fileName = crypto.createHash('md5').update(req.headers.host+url).digest('hex');
+                    cacheFile(fileName, buff, charset);
                     res.end(singleFileContent );
                     return;
                 });
@@ -305,12 +344,9 @@ exports = module.exports = function(prjDir, urls, options){
                 });
             return;
         }
+        cosoleResp('Need', url);
         prefix = url.substring(0, prefix);
-
-        debug(prefix+'|'+param.servlet);
         var files = url.substring(prefix.length + param.servlet.length + 1, url.length);
-
-        debug(files);
         files = files.split(param.seperator, 1000);
 
         var reqArray = [];
@@ -321,15 +357,13 @@ exports = module.exports = function(prjDir, urls, options){
 
             //combo URL有时候会多一个逗号
             if(file === "") continue;
-            var fullPath = filterUrl(prefix + files[i]);
+            var fullPath = prefix + filterUrl(files[i]);
             if(i === 0 ){
-                debug('mime type:%s',mime.lookup(fullPath.split('?')[0]));
                 res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0]));
             }
 
             var fileContent = readFromLocal(fullPath);
             if(!fileContent){
-                debug('file not in local"'+fullPath);
                 if(prevNeedHttp){
                     needHttpGet += ',' + file;
                     continue;
@@ -348,15 +382,14 @@ exports = module.exports = function(prjDir, urls, options){
         if(prevNeedHttp){
             reqArray.push({file: needHttpGet, ready:false});
         }
-        debug('array size: '+reqArray.length);
 
         var reqPath = prefix + param.servlet + '?';
         for(var i = 0, len = reqArray.length; i < len; i++){
             if(reqArray[i].ready){
                 continue;
             }
-            var cacheName = crypto.createHash('md5').update(reqArray[i].file).digest('hex');
-            var cachedContent = readFromCache('/' + cacheName);
+            var cacheName = crypto.createHash('md5').update(req.headers.host+reqArray[i].file).digest('hex');
+            var cachedContent = readFromCache(reqArray[i].file, '/' + cacheName);
             if(cachedContent){
                 reqArray[i].content = cachedContent;
                 reqArray[i].ready = true;
@@ -364,10 +397,11 @@ exports = module.exports = function(prjDir, urls, options){
             }
 
             (function(id) {
-                var requestPath = param.forwardPrefix + reqPath + reqArray[id].file;
-                http.get({host: param.host, port: 80, path: requestPath}, function(resp) {
+                var requestPath = reqPath + reqArray[id].file;
+                var requestOption = buildRequestOption(requestPath, req);
+                http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
-                        debugInfo('Remote not found : %s', 'define request: ', reqPath + reqArray[id].file);
+                        debugInfo('Remote not found: %s', reqPath + reqArray[id].file);
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
@@ -375,12 +409,11 @@ exports = module.exports = function(prjDir, urls, options){
                     }
 
                     var buffs = [];
-                    debug('request: ' + reqPath + reqArray[id].file);
                     resp.on('data', function(chunk) {
                         buffs.push(chunk);
                     });
                     resp.on('end', function() {
-                        debug('response: ' + reqPath + reqArray[id].file);
+                        cosoleResp('Remote', requestOption.host + reqPath + reqArray[id].file);
                         reqArray[id].ready = true;
                         var buff = joinbuffers(buffs);
 
@@ -388,11 +421,10 @@ exports = module.exports = function(prjDir, urls, options){
                         if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                             buff = buff.slice(3, buff.length);
                         }
-                        var fileName = crypto.createHash('md5').update(reqArray[id].file).digest('hex');
-                        debugInfo('Remote text:%s', reqPath + reqArray[id].file);
+                        var fileName = crypto.createHash('md5').update(req.headers.host+reqArray[id].file).digest('hex');
                         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                         reqArray[id].content = adaptCharset(buff, param.charset, charset);
-                        cacheFile('/'+fileName, buff, charset);
+                        cacheFile('/' + fileName, buff, charset);
                         sendData();
                     });
                 }).on('error',function(e){

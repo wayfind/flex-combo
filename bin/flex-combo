@@ -66,5 +66,5 @@ http.createServer(function (req, res) {
 }).listen(port, '0.0.0.0');
 var end = new Date();
 var spend = end.getTime()-begin.getTime();
-debug('Flex Combo Server running at http://127.0.0.1:'+port);
-debug('Server starup in ' +spend+' ms');
+console.log('Flex Combo Server running at http://127.0.0.1:'+port);
+console.log('Server starup in ' +spend+' ms');
