@@ -22,15 +22,23 @@ var reset = '\u001b[0m';
 
 function cosoleResp(type, c){
     if(type == "Need"){
-        console.log('%s=>Need: %s%s%s  %s',green, reset, blue, c, reset);
+        console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
         return;
     }
     if(type == 'Not found'){
-        console.log(red+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+        console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
         return;
     }
     if(type == 'Actually'){
-        console.log(green+'  -'+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+        console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
+        return;
+    }
+    if(type == 'Remote'){
+        console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
+        return;
+    }
+    if(type == 'Cache'){
+        console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
@@ -401,7 +409,7 @@ exports = module.exports = function(prjDir, urls, options){
                 var requestOption = buildRequestOption(requestPath, req);
                 http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
-                        debugInfo('Remote not found: %s', reqPath + reqArray[id].file);
+                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+requestOption.headers.host+ reset +')');
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
