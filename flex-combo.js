@@ -305,7 +305,12 @@ exports = module.exports = function(prjDir, urls, options){
             http.get(requestOption, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
-                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + requestOption.headers.host + reset + ')');
+                    var headerHost = '';
+                    if(requestOption.headers && requestOption.headers.host)
+                    {
+                        headerHost = requestOption.headers.host;
+                    }
+                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + headerHost + reset + ')');
                     res.end('File ' + requestOption.host + requestOption.path + ' not found.');
                     return;
                 }
@@ -409,7 +414,12 @@ exports = module.exports = function(prjDir, urls, options){
                 var requestOption = buildRequestOption(requestPath, req);
                 http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
-                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+requestOption.headers.host+ reset +')');
+                        var headerHost = '';
+                        if(requestOption.headers && requestOption.headers.host)
+                        {
+                            headerHost = requestOption.headers.host;
+                        }
+                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ headerHost + reset +')');
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
