@@ -170,6 +170,13 @@ function readFromLocal (fullPath) {
 
 var merge = function(dest, src) {
     for (var i in src) {
+        if(src[i] === Object(src[i])){
+            if(!dest[i]){
+                dest[i] = {};
+            }
+            merge(dest[i], src[i]);
+            continue;
+        }
         dest[i] = src[i];
     }
     return dest;
@@ -189,6 +196,7 @@ var cacheFile = function(fullPath, content, encode){
         });
         return;
     }
+    debug('%s保存缓存%s', fullPath, content);
     fs.writeFileSync(absPath, content);
 }
 
