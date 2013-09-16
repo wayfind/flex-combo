@@ -246,7 +246,7 @@ function buildRequestOption(url, req) {
     return requestOption;
 }
 exports = module.exports = function(prjDir, urls, options){
-    var userHome = process.env.HOME || process.env.HOMEPATH;//兼容windows
+    var userHome = process.env.HOME || process.env.USERPROFILE ||process.env.HOMEPATH;//兼容windows
     var cacheDir = path.join(userHome, '.flex-combo/cache');
     if(!fs.existsSync(cacheDir)){
         mkdirp(cacheDir);
