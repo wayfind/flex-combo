@@ -68,7 +68,7 @@ var param = {
         '-min\\.js$':'.js',
         '-min\\.css$':'.css'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.mp3',
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
