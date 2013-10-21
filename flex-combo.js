@@ -196,7 +196,7 @@ var cacheFile = function(fullPath, content, encode){
         });
         return;
     }
-    debug('%s保存缓存%s', fullPath, content);
+    debug('保存缓存%s', fullPath);
     fs.writeFileSync(absPath, content);
 }
 
