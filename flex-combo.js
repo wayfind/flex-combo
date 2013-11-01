@@ -319,6 +319,7 @@ exports = module.exports = function(prjDir, urls, options){
                         headerHost = requestOption.headers.host;
                     }
                     cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + headerHost + reset + ')');
+                    res.writeHead(404);
                     res.end('File ' + requestOption.host + requestOption.path + ' not found.');
                     return;
                 }
