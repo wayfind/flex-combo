@@ -20,6 +20,48 @@ var gray = '\u001b[37m';
 var yellow = '\u001b[33m';
 var reset = '\u001b[0m';
 
+var method_body = [
+    "var __escapehtml = {",
+    "escapehash: {",
+    "'<': '&lt;',",
+    "'>': '&gt;',",
+    "'&': '&amp;',",
+    "'\"': '&quot;',",
+    "\"'\": '&#x27;',",
+    "'/': '&#x2f;'",
+    "},",
+    "escapereplace: function(k) {",
+    "return __escapehtml.escapehash[k];",
+    "},",
+    "escaping: function(str) {",
+    "return typeof(str) !== 'string' ? str : str.replace(/[&<>\"]/igm, this.escapereplace);",
+    "},",
+    "detection: function(data) {",
+    "return typeof(data) === 'undefined' ? '' : data;",
+    "}",
+    "};",
+
+    "var __throw = function(error) {",
+    "if(typeof(console) !== 'undefined') {",
+    "if(console.warn) {",
+    "console.warn(error);",
+    "return;",
+    "}",
+
+    "if(console.log) {",
+    "console.log(error);",
+    "return;",
+    "}",
+    "}",
+
+    "throw(error);",
+    "};",
+
+    "_method = _method || {};",
+    "_method.__escapehtml = __escapehtml;",
+    "_method.__throw = __throw;"
+].join('');
+
 function cosoleResp(type, c){
     if(type == "Need"){
         console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
@@ -155,7 +197,9 @@ function readFromLocal (fullPath) {
             var buff = fs.readFileSync(htmlName);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var tpl = iconv.decode(buff, charset);
-            var compiled = juicer(tpl)._render;
+            var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
+                return 'function(_, _method) {' + method_body + fn_body + '}';
+            });
 
             //允许为某个url特别指定编码
             var outputCharset = param.charset;
@@ -163,7 +207,7 @@ function readFromLocal (fullPath) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
 
-            var tempalteFunction = 'window["'+revPath+'"] = ' + compiled.toString();
+            var tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
             cosoleResp('Local Juicer Compile', htmlName);
             fs.writeFile(absPath, tempalteFunction);
             return iconv.encode(tempalteFunction, outputCharset);
