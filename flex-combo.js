@@ -8,8 +8,8 @@ var http = require('http')
     , crypto = require('crypto')
     , beautify = require('./beautify.js').js_beautify
     , util = require('util')
-    , mime = require('mime');
-
+    , mime = require('mime')
+    , juicer = require('juicer');
 
 var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
@@ -148,6 +148,27 @@ function readFromLocal (fullPath) {
             absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         }
 
+        //前后端模板一致化，如果是*.html.js格式的请求，并且js文件不存在，则编译*.html为juicer的function格式返回
+        var extName = path.extname(absPath);
+        var htmlName = absPath.slice(0, absPath.length - extName.length);
+        if(path.extname(htmlName).toLowerCase() === '.html' && fs.existsSync(htmlName)){
+            var buff = fs.readFileSync(htmlName);
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var tpl = iconv.decode(buff, charset);
+            var compiled = juicer(tpl)._render;
+
+            //允许为某个url特别指定编码
+            var outputCharset = param.charset;
+            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+                outputCharset = param.urlBasedCharset[longestMatchPos];
+            }
+
+            var tempalteFunction = 'window["'+revPath+'"] = ' + compiled.toString();
+            cosoleResp('Local Juicer Compile', htmlName);
+            fs.writeFile(absPath, tempalteFunction);
+            return iconv.encode(tempalteFunction, outputCharset);
+        }
+
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
             if(isBinFile(absPath)){
@@ -164,6 +185,7 @@ function readFromLocal (fullPath) {
             cosoleResp('Local', absPath);
             return adaptCharset(buff, outputCharset, charset);
         }
+
     }
     return null;
 }
