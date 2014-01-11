@@ -198,7 +198,7 @@ function readFromLocal (fullPath) {
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var tpl = iconv.decode(buff, charset);
             var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
-                return 'function(_, _method) {' + method_body + fn_body + '}';
+                return 'function(_, _method) {' + method_body + fn_body + '};\n';
             });
 
             //允许为某个url特别指定编码
