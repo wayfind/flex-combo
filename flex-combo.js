@@ -9,7 +9,8 @@ var http = require('http')
     , beautify = require('./beautify.js').js_beautify
     , util = require('util')
     , mime = require('mime')
-    , juicer = require('juicer');
+    , juicer = require('juicer')
+    , less = require('less');
 
 var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
@@ -212,6 +213,24 @@ function readFromLocal (fullPath) {
             fs.writeFile(absPath, tempalteFunction);
             return iconv.encode(tempalteFunction, outputCharset);
         }
+
+        // added by jayli
+        // 新增less文件解析
+        if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath)){
+            var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var fContent = iconv.decode(buff, charset);
+            return new(less.Parser)({
+                processImports:false
+            }).parse(fContent,function(e,tree){
+                return tree.toCSS();
+            });    
+        }
+        // 新增scss文件解析:TODO
+        if(path.extname(htmlName).toLowerCase() === '.scss.css' && !fs.existsSync(htmlName)){
+
+        }
+
 
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
