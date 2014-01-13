@@ -310,6 +310,7 @@ var readFromCache = function(url, fullPath){
 }
 
 function buildRequestOption(url, req) {
+    var reqHost = req.headers.host.split(':')[0];
     var requestOption = {host: param.host, port: 80, path: url};
     //处理IP加Request Header的情况
     if (param.hostIp && param.headers) {
@@ -318,7 +319,7 @@ function buildRequestOption(url, req) {
     }
     if (param.hosts) {
         for (hostName in param.hosts) {
-            if (req.headers.host == hostName) {
+            if (reqHost == hostName) {
                 requestOption.host = param.hosts[hostName];
                 if (!requestOption.headers) {
                     requestOption.headers = {};
@@ -361,8 +362,9 @@ exports = module.exports = function(prjDir, urls, options){
 
     var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
+        var reqHost = req.headers.host.split(':')[0];
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
-        if(req.headers.host === param.host){
+        if(reqHost === param.host){
             return;
         }
         var url = req.url.replace(/http:\/\/.+?\//,'/');//兼容windows,windows平台下取得的req.url带http://部分
@@ -385,7 +387,7 @@ exports = module.exports = function(prjDir, urls, options){
                 return;
             }
 
-            var fileName = crypto.createHash('md5').update(req.headers.host+url).digest('hex');
+            var fileName = crypto.createHash('md5').update(reqHost+url).digest('hex');
             var cachedFile = readFromCache(filteredUrl, fileName);
             if(cachedFile){
                 res.end(cachedFile);
@@ -419,7 +421,7 @@ exports = module.exports = function(prjDir, urls, options){
                         buff = buff.slice(3, buff.length);
                     }
                     if(isBinFile(filteredUrl)){
-                        var binfileName = crypto.createHash('md5').update(req.headers.host+requestOption.path).digest('hex');
+                        var binfileName = crypto.createHash('md5').update(reqHost+requestOption.path).digest('hex');
                         cacheFile(binfileName, buff);
                         cosoleResp('Remote', requestOption.host + requestOption.path);
                         res.end(buff);
@@ -438,7 +440,7 @@ exports = module.exports = function(prjDir, urls, options){
                     }
 
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
-                    var fileName = crypto.createHash('md5').update(req.headers.host+url).digest('hex');
+                    var fileName = crypto.createHash('md5').update(reqHost+url).digest('hex');
                     cacheFile(fileName, buff, charset);
                     res.end(singleFileContent );
                     return;
@@ -495,7 +497,7 @@ exports = module.exports = function(prjDir, urls, options){
             if(reqArray[i].ready){
                 continue;
             }
-            var cacheName = crypto.createHash('md5').update(req.headers.host+reqArray[i].file).digest('hex');
+            var cacheName = crypto.createHash('md5').update(reqHost+reqArray[i].file).digest('hex');
             var cachedContent = readFromCache(reqArray[i].file, '/' + cacheName);
             if(cachedContent){
                 reqArray[i].content = cachedContent;
@@ -533,7 +535,7 @@ exports = module.exports = function(prjDir, urls, options){
                         if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                             buff = buff.slice(3, buff.length);
                         }
-                        var fileName = crypto.createHash('md5').update(req.headers.host+reqArray[id].file).digest('hex');
+                        var fileName = crypto.createHash('md5').update(reqHost+reqArray[id].file).digest('hex');
                         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                         reqArray[id].content = adaptCharset(buff, param.charset, charset);
                         cacheFile('/' + fileName, buff, charset);
