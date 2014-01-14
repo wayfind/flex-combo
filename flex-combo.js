@@ -184,7 +184,7 @@ function readFromLocal (fullPath) {
         var absPath = '';
 
         //如果是绝对路径，直接使用
-        if(dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)){
+        if(dir.indexOf('/') === 0 || /^\w{1}:[\\/].*$/.test(dir)){
             absPath = path.normalize(path.join(dir, revPath));
         }
         else{
