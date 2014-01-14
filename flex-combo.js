@@ -153,10 +153,15 @@ function isBinFile(fileName){
 
 /*
  * 根据传入的返回最长匹配的目录映射
+ * 考虑设置的urls路径有可能是父子路径，如：
+ * /a/b/c => /Users/c
+ * /a     => /Users/a
+ * 则链接/a/b/c/d.js对应/Users/c/d.js，而非/Users/a/b/c/d.js
  */
-function longgestMatchedDir(fullPath) {
+function longgestMatchedDir(fullPath, map) {
+
+    map = map || param.urls;
     fullPath = fullPath.split('?')[0];
-    var map = param.urls;
     var longestMatchNum = -1 , longestMatchPos = null;
     for (k in map) {
         if (fullPath.replace(/\\/g, '/').indexOf(k) === 0 && longestMatchNum < k.length) {
@@ -172,7 +177,7 @@ function longgestMatchedDir(fullPath) {
  */
 function readFromLocal (fullPath) {
     fullPath = fullPath.split('?')[0];
-    var longestMatchPos = longgestMatchedDir(fullPath);
+    var longestMatchPos = longgestMatchedDir(fullPath, param.urls);
     if(!longestMatchPos){ return null }
 
     //找到最长匹配的配置，顺序遍历已定义好的目录。多个目录用逗号","分隔。
@@ -242,9 +247,12 @@ function readFromLocal (fullPath) {
 
             //允许为某个url特别指定编码
             var outputCharset = param.charset;
-            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
-                outputCharset = param.urlBasedCharset[longestMatchPos];
+
+            if(param.urlBasedCharset){
+                var charsetLongestMatchPos = longgestMatchedDir(fullPath, param.urlBasedCharset);
+                outputCharset = param.urlBasedCharset[charsetLongestMatchPos];
             }
+
             cosoleResp('Local', absPath);
             return adaptCharset(buff, outputCharset, charset);
         }
@@ -297,7 +305,7 @@ var readFromCache = function(url, fullPath){
 
         //允许为某个url特别指定编码
         var outputCharset = param.charset;
-        var longestMatchPos = longgestMatchedDir(url);
+        var longestMatchPos = longgestMatchedDir(url, param.urls);
         if(longestMatchPos){
             if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
                 outputCharset = param.urlBasedCharset[longestMatchPos];
@@ -427,14 +435,14 @@ exports = module.exports = function(prjDir, urls, options){
                     }
                     cosoleResp('Remote', requestOption.host + requestOption.path);
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-                    var longestMatchPos = longgestMatchedDir(filteredUrl);
+                    var longestMatchPos = longgestMatchedDir(filteredUrl, param.urls);
 
                     //允许为某个url特别指定编码
                     var outputCharset = param.charset;
-                    if(longestMatchPos){
-                        if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
-                            outputCharset = param.urlBasedCharset[longestMatchPos];
-                        }
+                    
+                    if(param.urlBasedCharset){
+                        var charsetLongestMatchPos = longgestMatchedDir(url, param.urlBasedCharset);
+                        outputCharset = param.urlBasedCharset[charsetLongestMatchPos];
                     }
 
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
