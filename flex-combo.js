@@ -162,6 +162,8 @@ function longgestMatchedDir(fullPath, map) {
 
     map = map || param.urls;
     fullPath = fullPath.split('?')[0];
+    //去掉文件名，避免类似 /a/b.js 文件被 匹配至 /a/b 目录的情况
+    fullPath = fullPath.split('/').slice(0, -1).join('/');
     var longestMatchNum = -1 , longestMatchPos = null;
     for (k in map) {
         if (fullPath.replace(/\\/g, '/').indexOf(k) === 0 && longestMatchNum < k.length) {
@@ -439,7 +441,7 @@ exports = module.exports = function(prjDir, urls, options){
 
                     //允许为某个url特别指定编码
                     var outputCharset = param.charset;
-                    
+
                     if(param.urlBasedCharset){
                         var charsetLongestMatchPos = longgestMatchedDir(url, param.urlBasedCharset);
                         outputCharset = param.urlBasedCharset[charsetLongestMatchPos];
