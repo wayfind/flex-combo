@@ -329,6 +329,7 @@ function buildRequestOption(url, req) {
             }
         }
     }
+    requestOption.agent = false;
     return requestOption;
 }
 exports = module.exports = function(prjDir, urls, options){
@@ -466,7 +467,7 @@ exports = module.exports = function(prjDir, urls, options){
 
             //combo URL有时候会多一个逗号
             if(file === "") continue;
-            var fullPath = prefix + filterUrl(files[i]);
+            var fullPath = filterUrl(prefix + files[i]);
             if(i === 0 ){
                 res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0]));
             }
