@@ -216,7 +216,7 @@ function readFromLocal (fullPath) {
 
         // added by jayli
         // 新增less文件解析
-        if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath)){
+        if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
             var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var fContent = iconv.decode(buff, charset);
