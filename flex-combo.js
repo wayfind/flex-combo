@@ -380,7 +380,7 @@ exports = module.exports = function(prjDir, urls, options){
             }
             cosoleResp('Need', url);
             var filteredUrl = filterUrl(url);
-            res.setHeader('Content-Type', mime.lookup(filteredUrl.split('?')[0]));
+            res.setHeader('Content-Type', mime.lookup(filteredUrl.split('?')[0])+';charset='+param.charset);
             var singleFileContent = readFromLocal(filteredUrl);
 
             if(singleFileContent){
@@ -469,7 +469,7 @@ exports = module.exports = function(prjDir, urls, options){
             if(file === "") continue;
             var fullPath = filterUrl(prefix + files[i]);
             if(i === 0 ){
-                res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0]));
+                res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0])+';charset='+param.charset);
             }
 
             var fileContent = readFromLocal(fullPath);
