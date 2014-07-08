@@ -17,7 +17,8 @@
     "mime":"1.2.7",
     "debug":"0.7.0",
     "juicer":"0.6.5-stable-p2",
-    "less":""
+    "less":"",
+    "node-sass":""
   },
   "devDependencies": {},
   "scripts": {

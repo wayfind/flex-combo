@@ -10,7 +10,8 @@ var http = require('http')
     , util = require('util')
     , mime = require('mime')
     , juicer = require('juicer')
-    , less = require('less');
+    , less = require('less')
+    , sass = require('node-sass');
 
 var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
@@ -226,9 +227,19 @@ function readFromLocal (fullPath) {
                 return tree.toCSS();
             });    
         }
-        // 新增scss文件解析:TODO
-        if(path.extname(htmlName).toLowerCase() === '.scss.css' && !fs.existsSync(htmlName)){
 
+        // added by liuhuo.gk
+        // 新增scss文件解析
+        if(/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath)){
+            var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var fContent = iconv.decode(buff, charset);
+            var css = sass.renderSync({
+                data: fContent,
+                outputStyle: 'compressed'
+            });
+
+            return css;
         }
 
 
