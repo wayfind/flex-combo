@@ -120,8 +120,10 @@ var param = {
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
-    define: 'KISSY.add',
+    define: '',
     anonymous: true,
+    // define: 'KISSY.add',
+    // anonymous: true,
     hosts:{'a.tbcdn.cn':'122.225.67.241', 'g.tbcdn.cn':'115.238.23.250'}
 };
 
