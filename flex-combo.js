@@ -1,4 +1,5 @@
 var http = require('http')
+    , url = require('url')
     , fs = require('fs')
     , path = require('path')
     , isUtf8 = require('is-utf8')
@@ -84,6 +85,10 @@ function cosoleResp(type, c){
         console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
+    if (type == 'Error') {
+        console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
+        return;
+    }
     console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
     return;
 }
@@ -115,6 +120,10 @@ var param = {
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
+    // define: '',
+    // anonymous: true,
+    define: 'KISSY.add',
+    anonymous: false,
     hosts:{'a.tbcdn.cn':'122.225.67.241', 'g.tbcdn.cn':'115.238.23.250'}
 };
 
@@ -178,11 +187,11 @@ function readFromLocal (fullPath) {
     //找到最长匹配的配置，顺序遍历已定义好的目录。多个目录用逗号","分隔。
     var map = param.urls;
     var dirs = map[longestMatchPos].split(',');
-    for (var i = 0, len = dirs.length; i < len; i++){
+    for (var i = 0, len = dirs.length; i < len; i++) {
         var dir = dirs[i];
-        var revPath = fullPath.slice(longestMatchPos.length, fullPath.length);
+        var revPath = path.join('/', fullPath.slice(longestMatchPos.length, fullPath.length));
         var absPath = '';
-
+        debug('The rev path is %s', revPath);
         //如果是绝对路径，直接使用
         if(dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)){
             absPath = path.normalize(path.join(dir, revPath));
@@ -198,17 +207,41 @@ function readFromLocal (fullPath) {
             var buff = fs.readFileSync(htmlName);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var tpl = iconv.decode(buff, charset);
-            var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
-                return 'function(_, _method) {' + method_body + fn_body + '};\n';
-            });
+            try {
+                var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
+                    return 'function(_, _method) {' + method_body + fn_body + '};\n';
+                });
+            } catch(e) {
+                cosoleResp('Error', 'Compile failed with error '+ e.message);
+                return '';
+            }
 
             //允许为某个url特别指定编码
             var outputCharset = param.charset;
             if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
-
-            var tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
+            var tempalteFunction;
+            param.define = param.define || '';
+            // 未声明需要哪个定义模块
+            // 或者声明的错误
+            // 或者声明的是 `window`
+            if (
+                !param.define || 
+                'string' !== typeof param.define || 
+                !!~['window', 'global', 'self', 'parent','Window','Global'].indexOf(param.define)
+            ) {
+                debug('The package define is undefined or not a string');
+                tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
+            } else {
+                if (param.anonymous) {
+                    debug('Define a anonymous module');
+                    tempalteFunction = param.define + '(function(){return ' + compiled + '});';
+                } else {
+                    debug('Define a module with id');
+                    tempalteFunction = param.define + '("' + revPath + '", function () {return ' + compiled + '});';
+                }
+            }
             cosoleResp('Local Juicer Compile', htmlName);
             fs.writeFile(absPath, tempalteFunction);
             return iconv.encode(tempalteFunction, outputCharset);
@@ -368,7 +401,7 @@ exports = module.exports = function(prjDir, urls, options){
         if(reqHost === param.host){
             return;
         }
-        var url = req.url.replace(/http:\/\/.+?\//,'/');//兼容windows,windows平台下取得的req.url带http://部分
+        var url = path.resolve(req.url.replace(/http:\/\/.+?\//,'/'));//兼容windows,windows平台下取得的req.url带http://部分
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
