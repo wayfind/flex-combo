@@ -120,10 +120,10 @@ var param = {
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
-    define: '',
-    anonymous: true,
-    // define: 'KISSY.add',
+    // define: '',
     // anonymous: true,
+    define: 'KISSY.add',
+    anonymous: false,
     hosts:{'a.tbcdn.cn':'122.225.67.241', 'g.tbcdn.cn':'115.238.23.250'}
 };
 
@@ -229,7 +229,7 @@ function readFromLocal (fullPath) {
             if (
                 !param.define || 
                 'string' !== typeof param.define || 
-                !~['window', 'global', 'self', 'parent','Window','Global'].indexOf(param.define)
+                !!~['window', 'global', 'self', 'parent','Window','Global'].indexOf(param.define)
             ) {
                 debug('The package define is undefined or not a string');
                 tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
