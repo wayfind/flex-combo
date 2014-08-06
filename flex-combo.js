@@ -11,6 +11,7 @@ var http = require('http')
     , util = require('util')
     , mime = require('mime')
     , juicer = require('juicer')
+	, sass = require('node-sass')
     , less = require('less');
 
 var debug = require('debug')('flex-combo:debug');
@@ -116,7 +117,7 @@ var param = {
         '-min\\.js$':'.js',
         '-min\\.css$':'.css'
     },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.svg|\\.ttf|\\.mp3',
+    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.scss|\\.svg|\\.ttf|\\.mp3',
     prjDir: '',
     urlBasedCharset:{},
     fns:[],
@@ -157,7 +158,7 @@ function filterUrl(url){
 
 function isBinFile(fileName){
     fileName = fileName.split('?')[0];
-    return !/.js$|.css$|.less$/.test(fileName);
+    return !/.js$|.css$|.less$|.scss$/.test(fileName);
 }
 
 /*
@@ -259,9 +260,18 @@ function readFromLocal (fullPath) {
                 return tree.toCSS();
             });    
         }
-        // 新增scss文件解析:TODO
-        if(path.extname(htmlName).toLowerCase() === '.scss.css' && !fs.existsSync(htmlName)){
+        // css文件解析
+		if(/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
+            var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var fContent = iconv.decode(buff, charset);
 
+			var r_css = sass.renderSync({
+				file: absPath.replace(/\.css$/i,''),
+				success: function (css, map) {
+				}
+			});
+			return r_css;
         }
 
 
