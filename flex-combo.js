@@ -249,7 +249,7 @@ function readFromLocal (fullPath) {
         }
 
         // added by jayli
-        // 新增less文件解析
+        // 新增less文件解析 less.css => .less
         if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
             var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
@@ -260,14 +260,30 @@ function readFromLocal (fullPath) {
                 return tree.toCSS();
             });    
         }
-        // css文件解析
+        // scss文件解析 scss.css => scss
 		if(/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
-            var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
-            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-            var fContent = iconv.decode(buff, charset);
-
 			var r_css = sass.renderSync({
 				file: absPath.replace(/\.css$/i,''),
+				success: function (css, map) {
+				}
+			});
+			return r_css;
+        }
+		// .css => .less
+        if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,'.less'))){
+            var buff = fs.readFileSync(absPath.replace(/\.css$/i,'.less'));
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var fContent = iconv.decode(buff, charset);
+            return new(less.Parser)({
+                processImports:false
+            }).parse(fContent,function(e,tree){
+                return tree.toCSS();
+            });    
+        }
+		// .css => .scss
+		if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,'.scss'))){
+			var r_css = sass.renderSync({
+				file: absPath.replace(/\.css$/i,'.scss'),
 				success: function (css, map) {
 				}
 			});
