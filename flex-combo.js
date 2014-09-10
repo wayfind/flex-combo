@@ -11,7 +11,7 @@ var http = require('http')
     , util = require('util')
     , mime = require('mime')
     , juicer = require('juicer')
-	, sass = require('node-sass')
+    , sass = require('node-sass')
     , less = require('less');
 
 var debug = require('debug')('flex-combo:debug');
@@ -461,14 +461,19 @@ exports = module.exports = function(prjDir, urls, options){
                 var buffs = [];
                 if(resp.statusCode !== 200){
                     var headerHost = '';
-                    if(requestOption.headers && requestOption.headers.host)
-                    {
+                    if(requestOption.headers && requestOption.headers.host) {
                         headerHost = requestOption.headers.host;
                     }
                     cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + headerHost + reset + ')');
-                    res.writeHead(404);
-                    res.end('File ' + requestOption.host + requestOption.path + ' not found.');
-                    return;
+                    if (typeof next == "function") {
+                        next();
+                        return;
+                    }
+                    else {
+                        res.writeHead(404);
+                        res.end('File ' + requestOption.host + requestOption.path + ' not found.');
+                        return;
+                    }
                 }
                 resp.on('data', function(chunk) {
                     buffs.push(chunk);
@@ -502,7 +507,7 @@ exports = module.exports = function(prjDir, urls, options){
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
                     var fileName = crypto.createHash('md5').update(reqHost+url).digest('hex');
                     cacheFile(fileName, buff, charset);
-                    res.end(singleFileContent );
+                    res.end(singleFileContent);
                     return;
                 });
             }).on('error',function(e){
@@ -571,8 +576,7 @@ exports = module.exports = function(prjDir, urls, options){
                 http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
                         var headerHost = '';
-                        if(requestOption.headers && requestOption.headers.host)
-                        {
+                        if(requestOption.headers && requestOption.headers.host) {
                             headerHost = requestOption.headers.host;
                         }
                         cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ headerHost + reset +')');
