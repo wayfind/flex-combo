@@ -9,9 +9,10 @@ var http = require('http')
     , crypto = require('crypto')
     , beautify = require('./beautify.js').js_beautify
     , util = require('util')
+    , delog = require("debug.log")
     , mime = require('mime')
     , juicer = require('juicer')
-	, sass = require('node-sass')
+    , sass = require('node-sass')
     , less = require('less');
 
 var debug = require('debug')('flex-combo:debug');
@@ -67,30 +68,37 @@ var method_body = [
 
 function cosoleResp(type, c){
     if(type == "Need"){
-        console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
+        delog.request(c+" [Need]");
+        //console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
         return;
     }
     if(type == 'Not found'){
-        console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
+        delog.error(c+" [Not found]");
+        //console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
         return;
     }
     if(type == 'Actually'){
-        console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
+        delog.log(c+" [Actually]");
+        //console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if(type == 'Remote'){
-        console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
+        delog.response(c+" [Remote]");
+        //console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if(type == 'Cache'){
-        console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
+        delog.response(c+" [Cache]");
+        //console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if (type == 'Error') {
-        console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
+        delog.error(c+" [Error]");
+        //console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
         return;
     }
-    console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+    delog.response(c+" ["+type+"]");
+    //console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
     return;
 }
 /**
@@ -460,15 +468,17 @@ exports = module.exports = function(prjDir, urls, options){
             http.get(requestOption, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
-                    var headerHost = '';
-                    if(requestOption.headers && requestOption.headers.host)
-                    {
-                        headerHost = requestOption.headers.host;
+                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + ((requestOption && requestOption.host) ? requestOption.host : '') + reset + ')');
+                    if (typeof next == "function") {
+                        delog.process(url+" [Transfer to NEXT]");
+                        next();
+                        return;
                     }
-                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + headerHost + reset + ')');
-                    res.writeHead(404);
-                    res.end('File ' + requestOption.host + requestOption.path + ' not found.');
-                    return;
+                    else {
+                        res.writeHead(404);
+                        res.end('File ' + requestOption.host + requestOption.path + ' not found.');
+                        return;
+                    }
                 }
                 resp.on('data', function(chunk) {
                     buffs.push(chunk);
@@ -502,7 +512,7 @@ exports = module.exports = function(prjDir, urls, options){
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
                     var fileName = crypto.createHash('md5').update(reqHost+url).digest('hex');
                     cacheFile(fileName, buff, charset);
-                    res.end(singleFileContent );
+                    res.end(singleFileContent);
                     return;
                 });
             }).on('error',function(e){
@@ -570,12 +580,7 @@ exports = module.exports = function(prjDir, urls, options){
                 var requestOption = buildRequestOption(requestPath, req);
                 http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
-                        var headerHost = '';
-                        if(requestOption.headers && requestOption.headers.host)
-                        {
-                            headerHost = requestOption.headers.host;
-                        }
-                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ headerHost + reset +')');
+                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ ((requestOption && requestOption.host) ? requestOption.host : '') + reset +')');
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
