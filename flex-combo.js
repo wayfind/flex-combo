@@ -9,6 +9,7 @@ var http = require('http')
     , crypto = require('crypto')
     , beautify = require('./beautify.js').js_beautify
     , util = require('util')
+    , delog = require("debug.log")
     , mime = require('mime')
     , juicer = require('juicer')
     , sass = require('node-sass')
@@ -67,30 +68,37 @@ var method_body = [
 
 function cosoleResp(type, c){
     if(type == "Need"){
-        console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
+        delog.request(c+" [Need]");
+        //console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
         return;
     }
     if(type == 'Not found'){
-        console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
+        delog.error(c+" [Not found]");
+        //console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
         return;
     }
     if(type == 'Actually'){
-        console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
+        delog.log(c+" [Actually]");
+        //console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if(type == 'Remote'){
-        console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
+        delog.response(c+" [Remote]");
+        //console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if(type == 'Cache'){
-        console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
+        delog.response(c+" [Cache]");
+        //console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
         return;
     }
     if (type == 'Error') {
-        console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
+        delog.error(c+" [Error]");
+        //console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
         return;
     }
-    console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
+    delog.response(c+" ["+type+"]");
+    //console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
     return;
 }
 /**
