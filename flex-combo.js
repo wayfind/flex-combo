@@ -435,7 +435,8 @@ exports = module.exports = function(prjDir, urls, options){
         if(reqHost === param.host){
             return;
         }
-        var url = path.resolve(req.url.replace(/http:\/\/.+?\//,'/'));//兼容windows,windows平台下取得的req.url带http://部分
+        // don't use resolve 
+        var url = path.join(req.url.replace(/http:\/\/.+?\//,'/'));//兼容windows,windows平台下取得的req.url带http://部分
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
