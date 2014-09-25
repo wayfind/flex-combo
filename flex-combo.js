@@ -72,11 +72,14 @@ function cosoleResp(type, c) {
 
     switch (type) {
         case "Need":        delog.request(c); break;
-        case "Not Found":   delog.error(c); break;
-        case "Error":       delog.error(c); break;
-        case "Actually":    delog.log(c); break;
-        case "Remote":      delog.response(c); break;
-        case "Cache":       delog.response(c); break;
+        case "Compile":
+        case "Embed":       delog.process(c); break;
+        case "Not Found":
+        case "Error":       console.log("\n"); delog.error(c); break;
+        case "Local":
+        case "Remote":
+        case "Cache":       delog.response(c); console.log("\n"); break;
+        case "Actually":
         default:            delog.log(c);
     }
 }
@@ -95,7 +98,9 @@ function cosoleResp(type, c) {
  */
 var param = {
     urls: {},
-    host : 'assets.taobaocdn.com',
+    hostIp:'',
+    headers: null,
+    host: 'assets.taobaocdn.com',
     servlet : '?',
     seperator: ',',
     charset: 'gbk',
@@ -139,7 +144,7 @@ function filterUrl(url){
             }
         });
     }
-    cosoleResp('Parsing', filtered);
+    cosoleResp('Path', filtered);
     return filtered;
 }
 
@@ -250,7 +255,7 @@ function readFromLocal (fullPath) {
                 }
 
                 if (fs.existsSync(filepath)) {
-                    cosoleResp("Actually", filepath);
+                    cosoleResp("Embed", filepath);
                     return fs.readFileSync(filepath);
                 }
                 else {
@@ -258,18 +263,22 @@ function readFromLocal (fullPath) {
                 }
             });
 
+            cosoleResp("Compile", xcssfile);
+
             return new(less.Parser)({processImports:false})
                 .parse(lesstxt, function(e, tree) {
-                    cosoleResp("LESS", xcssfile);
+                    cosoleResp("Local", xcssfile);
                     return tree.toCSS();
                 });
         }
 
         function scssCompiler(xcssfile) {
+            cosoleResp("Compiling", xcssfile);
+
             return sass.renderSync({
                 file: xcssfile,
                 success: function (css, map) {
-                    cosoleResp("SCSS", xcssfile);
+                    cosoleResp("Local", xcssfile);
                 }
             });
         }
@@ -373,14 +382,16 @@ var readFromCache = function(url, fullPath){
 }
 
 function buildRequestOption(url, req) {
-    var reqHost = req.headers.host.split(':')[0];
     var requestOption = {host: param.host, port: 80, path: url};
+
     //处理IP加Request Header的情况
     if (param.hostIp && param.headers) {
         requestOption.host = param.hostIp;
         requestOption.headers = param.headers;
     }
+
     if (param.hosts) {
+        var reqHost = req.headers.host.split(':')[0];
         for (hostName in param.hosts) {
             if (reqHost == hostName) {
                 requestOption.host = param.hosts[hostName];
@@ -428,7 +439,9 @@ exports = module.exports = function(prjDir, urls, options){
     return function(req, res, next) {
         var reqHost = req.headers.host.split(':')[0];
         //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
-        if(reqHost === param.host){
+        if (reqHost === param.host) {
+            cosoleResp('Error', reqHost+" is will lead to Loop Req!");
+            next();
             return;
         }
         // don't use resolve 
@@ -467,7 +480,7 @@ exports = module.exports = function(prjDir, urls, options){
                 if(resp.statusCode !== 200){
                     cosoleResp('Not Found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + ((requestOption && requestOption.host) ? requestOption.host : '') + reset + ')');
                     if (typeof next == "function") {
-                        delog.process(url+" [Transfer to NEXT]");
+                        delog.process(url+" [Relay]");
                         next();
                         return;
                     }
