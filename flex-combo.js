@@ -17,12 +17,6 @@ var http = require('http')
 
 var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
-var green   = '\u001b[32m';
-var red   = '\u001b[31m';
-var blue  = '\u001b[34m';
-var gray = '\u001b[37m';
-var yellow = '\u001b[33m';
-var reset = '\u001b[0m';
 
 var method_body = [
     "var __escapehtml = {",
@@ -66,40 +60,25 @@ var method_body = [
     "_method.__throw = __throw;"
 ].join('');
 
-function cosoleResp(type, c){
-    if(type == "Need"){
-        delog.request(c+" [Need]");
-        //console.log('%s=>Need     : %s%s%s  %s',green, reset, blue, c, reset);
-        return;
+var green   = '\u001b[32m';
+var red   = '\u001b[31m';
+var blue  = '\u001b[34m';
+var gray = '\u001b[37m';
+var yellow = '\u001b[33m';
+var reset = '\u001b[0m';
+
+function cosoleResp(type, c) {
+    c += " ["+type+"]";
+
+    switch (type) {
+        case "Need":        delog.request(c); break;
+        case "Not Found":   delog.error(c); break;
+        case "Error":       delog.error(c); break;
+        case "Actually":    delog.log(c); break;
+        case "Remote":      delog.response(c); break;
+        case "Cache":       delog.response(c); break;
+        default:            delog.log(c);
     }
-    if(type == 'Not found'){
-        delog.error(c+" [Not found]");
-        //console.log('%s<=Not found: %s%s%s  %s',red, reset, gray, c, reset);
-        return;
-    }
-    if(type == 'Actually'){
-        delog.log(c+" [Actually]");
-        //console.log('%s   Actually: %s%s%s  %s',green, reset, gray, c, reset);
-        return;
-    }
-    if(type == 'Remote'){
-        delog.response(c+" [Remote]");
-        //console.log('%s<=Remote   : %s%s%s  %s',green, reset, gray, c, reset);
-        return;
-    }
-    if(type == 'Cache'){
-        delog.response(c+" [Cache]");
-        //console.log('%s<=Cache    : %s%s%s  %s',green, reset, gray, c, reset);
-        return;
-    }
-    if (type == 'Error') {
-        delog.error(c+" [Error]");
-        //console.log('%s<=Error    : %s%s%s  %s',red, reset, yellow, c, reset);
-        return;
-    }
-    delog.response(c+" ["+type+"]");
-    //console.log(green+'<='+type+': ' + reset + gray + ' ' + c + ' ' + reset);
-    return;
 }
 /**
  Yahoo Combo:
@@ -160,7 +139,7 @@ function filterUrl(url){
             }
         });
     }
-    cosoleResp('Actually', filtered);
+    cosoleResp('Parsing', filtered);
     return filtered;
 }
 
@@ -257,47 +236,64 @@ function readFromLocal (fullPath) {
         }
 
         // added by jayli
-        // 新增less文件解析 less.css => .less
-        if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
-            var buff = fs.readFileSync(absPath.replace(/\.css$/i,''));
+        var xcssfile = absPath.replace(/\.css$/i, '');
+
+        function lessCompiler(xcssfile) {
+            var buff = fs.readFileSync(xcssfile);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-            var fContent = iconv.decode(buff, charset);
-            return new(less.Parser)({
-                processImports:false
-            }).parse(fContent,function(e,tree){
-                return tree.toCSS();
-            });    
-        }
-        // scss文件解析 scss.css => scss
-		if(/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,''))){
-			var r_css = sass.renderSync({
-				file: absPath.replace(/\.css$/i,''),
-				success: function (css, map) {
-				}
-			});
-			return r_css;
-        }
-		// .css => .less
-        if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,'.less'))){
-            var buff = fs.readFileSync(absPath.replace(/\.css$/i,'.less'));
-            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-            var fContent = iconv.decode(buff, charset);
-            return new(less.Parser)({
-                processImports:false
-            }).parse(fContent,function(e,tree){
-                return tree.toCSS();
-            });    
-        }
-		// .css => .scss
-		if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(absPath.replace(/\.css$/i,'.scss'))){
-			var r_css = sass.renderSync({
-				file: absPath.replace(/\.css$/i,'.scss'),
-				success: function (css, map) {
-				}
-			});
-			return r_css;
+            var lesstxt = iconv.decode(buff, charset);
+
+            lesstxt = lesstxt.replace(/\@import\s+["'](.+)["']\;/g, function(t, basename) {
+                var filepath = path.join(path.dirname(xcssfile), basename);
+                if (!/\.[a-z]{1,}$/i.test(filepath)) {
+                    filepath += ".less";
+                }
+
+                if (fs.existsSync(filepath)) {
+                    cosoleResp("Actually", filepath);
+                    return fs.readFileSync(filepath);
+                }
+                else {
+                    return '';
+                }
+            });
+
+            return new(less.Parser)({processImports:false})
+                .parse(lesstxt, function(e, tree) {
+                    cosoleResp("LESS", xcssfile);
+                    return tree.toCSS();
+                });
         }
 
+        function scssCompiler(xcssfile) {
+            return sass.renderSync({
+                file: xcssfile,
+                success: function (css, map) {
+                    cosoleResp("SCSS", xcssfile);
+                }
+            });
+        }
+
+        // 新增less文件解析 less.css => .less
+        if(/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+            return lessCompiler(xcssfile);
+        }
+
+        // scss文件解析 scss.css => scss
+		if(/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+			return scssCompiler(xcssfile);
+        }
+
+		// .css => .less
+        xcssfile = absPath.replace(/\.css$/i,'.less');
+        if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+            return lessCompiler(xcssfile);
+        }
+		// .css => .scss
+        xcssfile = absPath.replace(/\.css$/i,'.scss');
+		if(/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+            return scssCompiler(xcssfile);
+        }
 
         if(fs.existsSync(absPath)){
             var buff = fs.readFileSync(absPath);
@@ -469,7 +465,7 @@ exports = module.exports = function(prjDir, urls, options){
             http.get(requestOption, function(resp) {
                 var buffs = [];
                 if(resp.statusCode !== 200){
-                    cosoleResp('Not found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + ((requestOption && requestOption.host) ? requestOption.host : '') + reset + ')');
+                    cosoleResp('Not Found', requestOption.host + requestOption.path + ' (host:'+ reset + yellow + ((requestOption && requestOption.host) ? requestOption.host : '') + reset + ')');
                     if (typeof next == "function") {
                         delog.process(url+" [Transfer to NEXT]");
                         next();
@@ -581,7 +577,7 @@ exports = module.exports = function(prjDir, urls, options){
                 var requestOption = buildRequestOption(requestPath, req);
                 http.get(requestOption, function(resp) {
                     if(resp.statusCode !== 200){
-                        cosoleResp('Not found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ ((requestOption && requestOption.host) ? requestOption.host : '') + reset +')');
+                        cosoleResp('Not Found', requestOption.host + reqPath + reqArray[id].file + '('+ yellow +'host:'+ ((requestOption && requestOption.host) ? requestOption.host : '') + reset +')');
                         reqArray[id].ready = true;
                         reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                         sendData();
@@ -630,4 +626,3 @@ exports = module.exports = function(prjDir, urls, options){
         sendData();
     }
 }
-
