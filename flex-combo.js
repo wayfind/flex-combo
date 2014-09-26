@@ -68,10 +68,10 @@ function cosoleResp(type, c) {
         case "Compile":
         case "Embed":       delog.process(c); break;
         case "Not Found":
-        case "Error":       console.log("\n"); delog.error(c); break;
+        case "Error":       console.log(''); delog.error(c); break;
         case "Local":
         case "Remote":
-        case "Cache":       delog.response(c); console.log("\n"); break;
+        case "Cache":       delog.response(c); console.log(''); break;
         case "Actually":
         default:            delog.log(c);
     }
@@ -90,26 +90,24 @@ function cosoleResp(type, c) {
  //淘宝combo server规则a.tbcdn.cn/apps??
  */
 var param = {
+    prjDir: '',
     urls: {},
     host: "g.tbcdn.cn",
-    hosts: {'a.tbcdn.cn':'122.225.67.241', 'g.tbcdn.cn':'115.238.23.250'},
+    hosts: {"a.tbcdn.cn":"122.225.67.241", "g.tbcdn.cn":"115.238.23.250"},
     headers: {},
     servlet: '?',
     seperator: ',',
-    charset: 'gbk',
-    filter: {
-        '\\?.+':'',
-        '-min\\.js$':'.js',
-        '-min\\.css$':'.css'
-    },
-    supportedFile: '\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.scss|\\.svg|\\.ttf|\\.mp3',
-    prjDir: '',
+    charset: "utf-8",
     urlBasedCharset:{},
-    fns:[],
-    // define: '',
-    // anonymous: true,
-    define: 'KISSY.add',
-    anonymous: false
+    supportedFile: "\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.scss|\\.svg|\\.ttf|\\.eot|\\.woff|\\.mp3",
+    filter: {
+        "\\?.+":'',
+        "-min\\.js$":".js",
+        "-min\\.css$":".css"
+    },
+    define: "KISSY.add",
+    anonymous: false,
+    fns:[]
 };
 
 function adaptCharset(buff, outCharset, charset) {
@@ -123,15 +121,15 @@ function adaptCharset(buff, outCharset, charset) {
 function filterUrl(url) {
     var filter = param.filter;
     var filtered = url;
-    for(var fk in filter){
+    for (var fk in filter) {
         filtered = filtered.replace(new RegExp(fk), filter[fk]);
     }
-    if(param.fns){
-        param.fns.forEach(function(fn){
-            try{
+    if (param.fns) {
+        param.fns.forEach(function(fn) {
+            try {
                 filtered = fn(filtered);
             }
-            catch(e){
+            catch(e) {
 
             }
         });
@@ -167,28 +165,29 @@ function longgestMatchedDir(fullPath) {
 function readFromLocal(fullPath) {
     fullPath = fullPath.split('?')[0];
     var longestMatchPos = longgestMatchedDir(fullPath);
-    if(!longestMatchPos){ return null }
+    if (!longestMatchPos) return null;
 
     //找到最长匹配的配置，顺序遍历已定义好的目录。多个目录用逗号","分隔。
     var map = param.urls;
     var dirs = map[longestMatchPos].split(',');
     for (var i = 0, len = dirs.length; i < len; i++) {
         var dir = dirs[i];
-        var revPath = path.join('/', fullPath.slice(longestMatchPos.length, fullPath.length));
-        var absPath = '';
+        var revPath = path.join(fullPath.slice(longestMatchPos.length, fullPath.length));
         debug('The rev path is %s', revPath);
+
+        var absPath = '';
         //如果是绝对路径，直接使用
-        if(dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)){
+        if (dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)) {
             absPath = path.normalize(path.join(dir, revPath));
         }
-        else{
+        else {
             absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         }
 
         //前后端模板一致化，如果是*.html.js格式的请求，并且js文件不存在，则编译*.html为juicer的function格式返回
         var extName = path.extname(absPath);
         var htmlName = absPath.slice(0, absPath.length - extName.length);
-        if(path.extname(htmlName).toLowerCase() === '.html' && fs.existsSync(htmlName)){
+        if (path.extname(htmlName).toLowerCase() === '.html' && fs.existsSync(htmlName)) {
             var buff = fs.readFileSync(htmlName);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var tpl = iconv.decode(buff, charset);
@@ -196,15 +195,10 @@ function readFromLocal(fullPath) {
                 var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
                     return 'function(_, _method) {' + method_body + fn_body + '};\n';
                 });
-            } catch(e) {
+            }
+            catch(e) {
                 cosoleResp('Error', 'Compile failed with error '+ e.message);
                 return '';
-            }
-
-            //允许为某个url特别指定编码
-            var outputCharset = param.charset;
-            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
-                outputCharset = param.urlBasedCharset[longestMatchPos];
             }
 
             var tempalteFunction;
@@ -219,11 +213,13 @@ function readFromLocal(fullPath) {
             ) {
                 debug('The package define is undefined or not a string');
                 tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
-            } else {
+            }
+            else {
                 if (param.anonymous) {
                     debug('Define a anonymous module');
                     tempalteFunction = param.define + '(function(){return ' + compiled + '});';
-                } else {
+                }
+                else {
                     debug('Define a module with id');
                     tempalteFunction = param.define + '("' + revPath + '", function () {return ' + compiled + '});';
                 }
@@ -233,6 +229,12 @@ function readFromLocal(fullPath) {
             cosoleResp('Local',   htmlName);
 
             fs.writeFile(absPath, tempalteFunction);
+
+            //允许为某个url特别指定编码
+            var outputCharset = param.charset;
+            if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
+                outputCharset = param.urlBasedCharset[longestMatchPos];
+            }
             return iconv.encode(tempalteFunction, outputCharset);
         }
 
@@ -323,8 +325,8 @@ function readFromLocal(fullPath) {
 
 var merge = function(dest, src) {
     for (var i in src) {
-        if(src[i] === Object(src[i])){
-            if(!dest[i]){
+        if (src[i] === Object(src[i])) {
+            if (!dest[i]) {
                 dest[i] = {};
             }
             merge(dest[i], src[i]);
@@ -342,11 +344,11 @@ var cacheFileName = function(url) {
 var cacheFile = function(fullPath, content) {
     var absPath = path.join(param.cacheDir, fullPath);
     var lastDir = path.dirname(absPath);
-    if(/[<>\*\?]+/g.test(absPath)){
+    if (/[<>\*\?]+/g.test(absPath)) {
         debugInfo('Exception file name: can not cache to %s',absPath);
         return;
     }
-    if(!fs.existsSync(lastDir)){
+    if (!fs.existsSync(lastDir)) {
         debug('%s is not exist', lastDir);
         mkdirp.sync(lastDir, {mode:0777});
     }
@@ -357,11 +359,11 @@ var cacheFile = function(fullPath, content) {
 
 var readFromCache = function(url, fullPath) {
     var absPath = path.join(param.cacheDir, fullPath);
-    if(fs.existsSync(absPath)){
+    if (fs.existsSync(absPath)) {
         cosoleResp('Cache', absPath);
 
         var buff = fs.readFileSync(absPath);
-        if(isBinFile(absPath)){
+        if (isBinFile(absPath)) {
             return buff;
         }
         var charset = isUtf8(buff) ? 'utf8' : 'gbk';
@@ -369,8 +371,8 @@ var readFromCache = function(url, fullPath) {
         //允许为某个url特别指定编码
         var outputCharset = param.charset;
         var longestMatchPos = longgestMatchedDir(url);
-        if(longestMatchPos){
-            if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+        if (longestMatchPos) {
+            if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
         }
@@ -394,7 +396,7 @@ function buildRequestOption(url, req) {
         var reqHost = req.headers.host.split(':')[0];
         for (hostName in param.hosts) {
             if (reqHost == hostName) {
-                requestOption.host = param.hosts[hostName];
+                requestOption.host         = param.hosts[hostName];
                 requestOption.headers.host = hostName;
                 break;
             }
@@ -418,7 +420,7 @@ exports = module.exports = function(prjDir, urls, options){
     var userHome = process.env.HOME || process.env.USERPROFILE ||process.env.HOMEPATH;//兼容windows
 
     var cacheDir = path.join(userHome, '.flex-combo/cache');
-    if(!fs.existsSync(cacheDir)){
+    if (!fs.existsSync(cacheDir)) {
         mkdirp.sync(cacheDir, {mode:0777});
     }
 
@@ -435,10 +437,10 @@ exports = module.exports = function(prjDir, urls, options){
         param = merge(param, JSON.parse(paramStr));
     }
     param.cacheDir = cacheDir;
-    if(urls){
+    if (urls) {
         param.urls = merge(param.urls, urls);
     }
-    if(options){
+    if (options) {
         options.urls = param.urls;
         param = merge(param, options);
     }
@@ -454,18 +456,22 @@ exports = module.exports = function(prjDir, urls, options){
         var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
-        if(prefix === -1){
+        if (prefix === -1) {
             //combo不处理html文件，但是需要接管其他资源
-            if(!fileReg.test(url)) {
+            if (!fileReg.test(url)) {
                 next();
                 return;
             }
             cosoleResp('Need', url);
-            var filteredUrl = filterUrl(url);
-            res.setHeader('Content-Type', mime.lookup(filteredUrl.split('?')[0])+';charset='+param.charset);
-            var singleFileContent = readFromLocal(filteredUrl);
 
-            if(singleFileContent){
+            var filteredUrl = filterUrl(url);
+            res.writeHead(200, {
+                "Access-Control-Allow-Origin": '*',
+                "Content-Type": mime.lookup(filteredUrl.split('?')[0])+';charset='+param.charset
+            });
+
+            var singleFileContent = readFromLocal(filteredUrl);
+            if (singleFileContent) {
                 res.end(singleFileContent);
                 return;
             }
@@ -486,7 +492,7 @@ exports = module.exports = function(prjDir, urls, options){
 
             http.get(requestOption, function(resp) {
                 var buffs = [];
-                if(resp.statusCode !== 200){
+                if (resp.statusCode !== 200) {
                     cosoleResp('Not Found', requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
                     if (typeof next == "function") {
                         delog.process(url+" [Relay]");
@@ -495,7 +501,7 @@ exports = module.exports = function(prjDir, urls, options){
                     }
                     else {
                         res.writeHead(404);
-                        res.end('File ' + requestOption.host + requestOption.path + ' not found.');
+                        res.end('File ' + requestOption.headers.host + requestOption.path + ' not found.');
                         return;
                     }
                 }
@@ -506,7 +512,7 @@ exports = module.exports = function(prjDir, urls, options){
                     var buff = joinbuffers(buffs);
 
                     //fix 80% situation bom problem.quick and dirty
-                    if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
+                    if (buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                         buff = buff.slice(3, buff.length);
                     }
 
@@ -524,8 +530,8 @@ exports = module.exports = function(prjDir, urls, options){
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                     var longestMatchPos = longgestMatchedDir(filteredUrl);
                     var outputCharset = param.charset;
-                    if(longestMatchPos){
-                        if(param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]){
+                    if (longestMatchPos) {
+                        if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                             outputCharset = param.urlBasedCharset[longestMatchPos];
                         }
                     }
@@ -535,9 +541,9 @@ exports = module.exports = function(prjDir, urls, options){
                     return;
                 });
             })
-            .on('error',function(e){
+            .on('error',function(e) {
                 debugInfo('Networking error:' + e.message);
-                res.writeHead(404, { 'Content-Type': 'text/html;charset=utf-8'});
+                res.writeHead(404, {'Content-Type': 'text/html;charset=utf-8'});
                 res.end('404 Error, File not found.');
                 return;
             });
@@ -552,19 +558,19 @@ exports = module.exports = function(prjDir, urls, options){
         var reqArray = [];
         var prevNeedHttp = false;   //为循环做准备，用来判定上次循环的file是否需要通过http获取
         var needHttpGet = '';
-        for(var i = 0, len = files.length; i < len; i++){
+        for (var i = 0, len = files.length; i < len; i++) {
             var file = files[i];
 
             //combo URL有时候会多一个逗号
-            if(file === '') continue;
+            if (file === '') continue;
             var fullPath = filterUrl(prefix + files[i]);
-            if(i === 0 ){
+            if (i === 0 ) {
                 res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0])+';charset='+param.charset);
             }
 
             var fileContent = readFromLocal(fullPath);
-            if(!fileContent){
-                if(prevNeedHttp){
+            if (!fileContent) {
+                if (prevNeedHttp) {
                     needHttpGet += ',' + file;
                     continue;
                 }
@@ -572,20 +578,20 @@ exports = module.exports = function(prjDir, urls, options){
                 needHttpGet = file;
                 continue;
             }
-            if(prevNeedHttp){
+            if (prevNeedHttp) {
                 reqArray.push({file: needHttpGet, ready: false});
             }
             prevNeedHttp = false;
             reqArray.push({file: file, content: fileContent, ready: true});
         }
 
-        if(prevNeedHttp){
+        if (prevNeedHttp) {
             reqArray.push({file: needHttpGet, ready:false});
         }
 
         var reqPath = prefix + param.servlet + '?';
-        for(var i = 0, len = reqArray.length; i < len; i++){
-            if(reqArray[i].ready){
+        for (var i = 0, len = reqArray.length; i < len; i++) {
+            if (reqArray[i].ready) {
                 continue;
             }
 
@@ -624,7 +630,7 @@ exports = module.exports = function(prjDir, urls, options){
                             var buff = joinbuffers(buffs);
 
                             //fix 80% situation bom problem.quick and dirty
-                            if(buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
+                            if (buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                                 buff = buff.slice(3, buff.length);
                             }
 
@@ -634,7 +640,7 @@ exports = module.exports = function(prjDir, urls, options){
                             sendData();
                         });
                     })
-                    .on('error',function(e){
+                    .on('error',function(e) {
                         reqArray[id].ready = true;
                         debug('Networking error:' + e.message);
                     });
@@ -642,13 +648,13 @@ exports = module.exports = function(prjDir, urls, options){
             })(i);
         }
 
-        var sendData = function(){
-            for(var j = 0, len = reqArray.length; j < len; j++){
-                if(reqArray[j].ready === false){
+        var sendData = function() {
+            for (var j = 0, len = reqArray.length; j < len; j++) {
+                if (reqArray[j].ready === false) {
                     return;
                 }
             }
-            reqArray.forEach(function(reqNode){
+            reqArray.forEach(function(reqNode) {
                 res.write(reqNode.content);
             });
             res.end();
