@@ -1,5 +1,5 @@
 var http     = require('http')
-    , url    = require('url')
+    , urlLib = require('url')
     , fs     = require('fs')
     , path   = require('path')
     , isUtf8 = require('is-utf8')
@@ -68,7 +68,7 @@ function cosoleResp(type, c) {
         case "Compile":
         case "Embed":       delog.process(c); break;
         case "Not Found":
-        case "Error":       console.log(''); delog.error(c); break;
+        case "Error":       delog.error(c); break;
         case "Local":
         case "Remote":
         case "Cache":       delog.response(c); console.log(''); break;
@@ -119,7 +119,7 @@ function adaptCharset(buff, outCharset, charset) {
 }
 
 function filterUrl(url) {
-    var filter = param.filter;
+    var filter   = param.filter;
     var filtered = url;
     for (var fk in filter) {
         filtered = filtered.replace(new RegExp(fk), filter[fk]);
@@ -230,7 +230,7 @@ function readFromLocal(fullPath) {
 
             fs.writeFile(absPath, tempalteFunction);
 
-            //允许为某个url特别指定编码
+            // 允许为某个url特别指定编码
             var outputCharset = param.charset;
             if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
@@ -303,19 +303,19 @@ function readFromLocal(fullPath) {
         }
 
         if (fs.existsSync(absPath)) {
+            cosoleResp('Local', absPath);
+
             var buff = fs.readFileSync(absPath);
             if (isBinFile(absPath)) {
-                cosoleResp('Local', absPath);
                 return buff;
             }
-            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
 
-            //允许为某个url特别指定编码
+            // 允许为某个url特别指定编码
+            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var outputCharset = param.charset;
             if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
-            cosoleResp('Local', absPath);
             return adaptCharset(buff, outputCharset, charset);
         }
 
@@ -366,9 +366,9 @@ var readFromCache = function(url, fullPath) {
         if (isBinFile(absPath)) {
             return buff;
         }
-        var charset = isUtf8(buff) ? 'utf8' : 'gbk';
 
-        //允许为某个url特别指定编码
+        // 允许为某个url特别指定编码
+        var charset = isUtf8(buff) ? 'utf8' : 'gbk';
         var outputCharset = param.charset;
         var longestMatchPos = longgestMatchedDir(url);
         if (longestMatchPos) {
@@ -449,11 +449,16 @@ exports = module.exports = function(prjDir, urls, options){
 
     var fileReg = new RegExp(param.supportedFile);
     return function(req, res, next) {
-        var reqHost = req.headers.host.split(':')[0];
+        if (typeof next != "function") {
+            next = function() {
+                res.writeHead(404, {'Content-Type': 'text/plain'});
+                res.end('Not Found.');
+            }
+        }
 
-        // don't use resolve 
-        var url = path.join(req.url.replace(/http:\/\/.+?\//,'/'));//兼容windows,windows平台下取得的req.url带http://部分
-        var prefix = url.indexOf(param.servlet + '?');
+        var reqHost = req.headers.host.split(':')[0];
+        var url     = urlLib.parse(req.url).path;
+        var prefix  = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
         if (prefix === -1) {
@@ -493,17 +498,10 @@ exports = module.exports = function(prjDir, urls, options){
             http.get(requestOption, function(resp) {
                 var buffs = [];
                 if (resp.statusCode !== 200) {
-                    cosoleResp('Not Found', requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
-                    if (typeof next == "function") {
-                        delog.process(url+" [Relay]");
-                        next();
-                        return;
-                    }
-                    else {
-                        res.writeHead(404);
-                        res.end('File ' + requestOption.headers.host + requestOption.path + ' not found.');
-                        return;
-                    }
+                    cosoleResp("Not Found", "<= "+requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
+
+                    next();
+                    return;
                 }
                 resp.on('data', function(chunk) {
                     buffs.push(chunk);
@@ -526,16 +524,15 @@ exports = module.exports = function(prjDir, urls, options){
 
                     cacheFile(cacheFileName(path.join(reqHost, url)), buff);
 
-                    //允许为某个url特别指定编码
+                    // 允许为某个url特别指定编码
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                     var longestMatchPos = longgestMatchedDir(filteredUrl);
-                    var outputCharset = param.charset;
+                    var outputCharset   = param.charset;
                     if (longestMatchPos) {
                         if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                             outputCharset = param.urlBasedCharset[longestMatchPos];
                         }
                     }
-
                     var singleFileContent = adaptCharset(buff, outputCharset, charset);
                     res.end(singleFileContent);
                     return;
@@ -613,7 +610,7 @@ exports = module.exports = function(prjDir, urls, options){
                 else {
                     http.get(requestOption, function(resp) {
                         if (resp.statusCode !== 200) {
-                            cosoleResp('Not Found', requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
+                            cosoleResp("Not Found", "<= "+requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                             reqArray[id].ready = true;
                             reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                             sendData();
