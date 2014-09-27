@@ -64,16 +64,16 @@ function cosoleResp(type, c) {
     c += " [" + type + ']';
 
     switch (type) {
-        case "Need":        delog.request(c); break;
+        case "Need":    delog.request(c); break;
         case "Compile":
-        case "Embed":       delog.process(c); break;
-        case "Not Found":
-        case "Error":       delog.error(c); break;
+        case "Embed":   delog.process(c); break;
+        case "Disable": c = "<= "+c;
+        case "Error":   delog.error(c); break;
         case "Local":
         case "Remote":
-        case "Cache":       delog.response(c); console.log(''); break;
+        case "Cache":   delog.response(c); console.log(''); break;
         case "Actually":
-        default:            delog.log(c);
+        default: delog.log(c);
     }
 }
 /**
@@ -498,7 +498,7 @@ exports = module.exports = function(prjDir, urls, options){
             http.get(requestOption, function(resp) {
                 var buffs = [];
                 if (resp.statusCode !== 200) {
-                    cosoleResp("Not Found", "<= "+requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
+                    cosoleResp("Disable", requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
 
                     next();
                     return;
@@ -610,7 +610,7 @@ exports = module.exports = function(prjDir, urls, options){
                 else {
                     http.get(requestOption, function(resp) {
                         if (resp.statusCode !== 200) {
-                            cosoleResp("Not Found", "<= "+requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
+                            cosoleResp("Disable", requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                             reqArray[id].ready = true;
                             reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
                             sendData();
