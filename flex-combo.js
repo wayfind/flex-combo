@@ -239,7 +239,7 @@ function readFromLocal(fullPath) {
         }
 
         // Added by jayli, Enhanced by liming.mlm
-        function lessCompiler(xcssfile) {
+        function lessCompiler(xcssfile, absPath) {
             var buff = fs.readFileSync(xcssfile);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var lesstxt = iconv.decode(buff, charset);
@@ -261,44 +261,52 @@ function readFromLocal(fullPath) {
 
             cosoleResp("Compile", xcssfile);
 
-            return new(less.Parser)({processImports:false})
+            var content = new(less.Parser)({processImports:false})
                 .parse(lesstxt, function(e, tree) {
                     cosoleResp("Local", xcssfile);
-                    return tree.toCSS()+"\n";
+                    return tree.toCSS();
                 });
+
+            if (absPath) fs.writeFile(absPath, content);
+
+            return content+"\n";
         }
 
-        function scssCompiler(xcssfile) {
+        function scssCompiler(xcssfile, absPath) {
             cosoleResp("Compiling", xcssfile);
 
-            return sass.renderSync({
+            var content = sass.renderSync({
                 file: xcssfile,
                 success: function(css, map) {
                     cosoleResp("Local", xcssfile);
                 }
-            })+"\n";
+            });
+
+            if (absPath) fs.writeFile(absPath, content);
+
+            return content+"\n";
         }
 
         var xcssfile = absPath.replace(/\.css$/i, '');
 
         // 新增less文件解析 less.css => .less
         if (/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-            return lessCompiler(xcssfile);
+            return lessCompiler(xcssfile, absPath);
         }
 
         // scss文件解析 scss.css => scss
-		if (/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-			return scssCompiler(xcssfile);
+        if (/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+            return scssCompiler(xcssfile, absPath);
         }
 
-		// .css => .less
-        xcssfile = absPath.replace(/\.css$/i,'.less');
+        // .css => .less
+        xcssfile = absPath.replace(/\.css$/i, '.less');
         if (/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
             return lessCompiler(xcssfile);
         }
-		// .css => .scss
-        xcssfile = absPath.replace(/\.css$/i,'.scss');
-		if (/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+        // .css => .scss
+        xcssfile = absPath.replace(/\.css$/i, '.scss');
+        if (/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
             return scssCompiler(xcssfile);
         }
 
