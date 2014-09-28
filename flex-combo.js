@@ -1,21 +1,21 @@
-var http     = require('http')
+var http = require('http')
     , urlLib = require('url')
-    , fs     = require('fs')
-    , path   = require('path')
+    , fs = require('fs')
+    , path = require('path')
     , isUtf8 = require('is-utf8')
-    , iconv  = require('iconv-lite')
+    , iconv = require('iconv-lite')
     , mkdirp = require('mkdirp')
     , crypto = require('crypto')
-    , util   = require('util')
-    , delog  = require("debug.log")
-    , mime   = require('mime')
+    , util = require('util')
+    , delog = require("debug.log")
+    , mime = require('mime')
     , juicer = require('juicer')
-    , sass   = require('node-sass')
-    , less   = require('less')
-    , beautify    = require('./beautify.js').js_beautify
+    , sass = require('node-sass')
+    , less = require('less')
+    , beautify = require('./beautify.js').js_beautify
     , joinbuffers = require('joinbuffers');
 
-var debug     = require('debug')('flex-combo:debug');
+var debug = require('debug')('flex-combo:debug');
 var debugInfo = require('debug')('flex-combo:info');
 
 var method_body = [
@@ -64,16 +64,27 @@ function cosoleResp(type, c) {
     c += " [" + type + ']';
 
     switch (type) {
-        case "Need":    delog.request(c); break;
+        case "Need":
+            delog.request(c);
+            break;
         case "Compile":
-        case "Embed":   delog.process(c); break;
-        case "Disable": c = "<= "+c;
-        case "Error":   delog.error(c); break;
+        case "Embed":
+            delog.process(c);
+            break;
+        case "Disable":
+            c = "<= " + c;
+        case "Error":
+            delog.error(c);
+            break;
         case "Local":
         case "Remote":
-        case "Cache":   delog.response(c); console.log(''); break;
+        case "Cache":
+            delog.response(c);
+            console.log('');
+            break;
         case "Actually":
-        default: delog.log(c);
+        default:
+            delog.log(c);
     }
 }
 /**
@@ -93,21 +104,21 @@ var param = {
     prjDir: '',
     urls: {},
     host: "g.tbcdn.cn",
-    hosts: {"a.tbcdn.cn":"122.225.67.241", "g.tbcdn.cn":"115.238.23.250"},
+    hosts: {"a.tbcdn.cn": "122.225.67.241", "g.tbcdn.cn": "115.238.23.250"},
     headers: {},
     servlet: '?',
     seperator: ',',
     charset: "utf-8",
-    urlBasedCharset:{},
+    urlBasedCharset: {},
     supportedFile: "\\.js|\\.css|\\.png|\\.gif|\\.jpg|\\.swf|\\.xml|\\.less|\\.scss|\\.svg|\\.ttf|\\.eot|\\.woff|\\.mp3",
     filter: {
-        "\\?.+":'',
-        "-min\\.js$":".js",
-        "-min\\.css$":".css"
+        "\\?.+": '',
+        "-min\\.js$": ".js",
+        "-min\\.css$": ".css"
     },
     define: "KISSY.add",
     anonymous: false,
-    fns:[]
+    fns: []
 };
 
 function adaptCharset(buff, outCharset, charset) {
@@ -119,17 +130,17 @@ function adaptCharset(buff, outCharset, charset) {
 }
 
 function filterUrl(url) {
-    var filter   = param.filter;
+    var filter = param.filter;
     var filtered = url;
     for (var fk in filter) {
         filtered = filtered.replace(new RegExp(fk), filter[fk]);
     }
     if (param.fns) {
-        param.fns.forEach(function(fn) {
+        param.fns.forEach(function (fn) {
             try {
                 filtered = fn(filtered);
             }
-            catch(e) {
+            catch (e) {
 
             }
         });
@@ -176,7 +187,7 @@ function readFromLocal(fullPath) {
         debug('The rev path is %s', revPath);
 
         var absPath = '';
-        //如果是绝对路径，直接使用
+        // 如果是绝对路径，直接使用
         if (dir.indexOf('/') === 0 || /^\w{1}:\\.*$/.test(dir)) {
             absPath = path.normalize(path.join(dir, revPath));
         }
@@ -184,20 +195,19 @@ function readFromLocal(fullPath) {
             absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         }
 
-        //前后端模板一致化，如果是*.html.js格式的请求，并且js文件不存在，则编译*.html为juicer的function格式返回
-        var extName = path.extname(absPath);
-        var htmlName = absPath.slice(0, absPath.length - extName.length);
-        if (path.extname(htmlName).toLowerCase() === '.html' && fs.existsSync(htmlName)) {
+        // 前后端模板一致化，如果是*.html.js格式的请求，则编译*.html为juicer的function格式返回
+        if (/\.html\.js$/i.test(absPath)) {
+            var htmlName = absPath.replace(/\.js$/, '');
             var buff = fs.readFileSync(htmlName);
             var charset = isUtf8(buff) ? 'utf8' : 'gbk';
             var tpl = iconv.decode(buff, charset);
             try {
-                var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function($, fn_body) {
+                var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function ($, fn_body) {
                     return 'function(_, _method) {' + method_body + fn_body + '};\n';
                 });
             }
-            catch(e) {
-                cosoleResp('Error', 'Compile failed with error '+ e.message);
+            catch (e) {
+                cosoleResp('Error', 'Compile failed with error ' + e.message);
                 return '';
             }
 
@@ -207,12 +217,11 @@ function readFromLocal(fullPath) {
             // 或者声明的错误
             // 或者声明的是 `window`
             if (
-                !param.define || 
-                'string' !== typeof param.define || 
-                !!~['window', 'global', 'self', 'parent','Window','Global'].indexOf(param.define)
-            ) {
+                !param.define ||
+                    'string' !== typeof param.define || !!~['window', 'global', 'self', 'parent', 'Window', 'Global'].indexOf(param.define)
+                ) {
                 debug('The package define is undefined or not a string');
-                tempalteFunction = 'window["'+revPath+'"] = ' + compiled;
+                tempalteFunction = 'window["' + revPath + '"] = ' + compiled;
             }
             else {
                 if (param.anonymous) {
@@ -226,7 +235,7 @@ function readFromLocal(fullPath) {
             }
 
             cosoleResp('Compile', htmlName);
-            cosoleResp('Local',   htmlName);
+            cosoleResp('Local', absPath);
 
             fs.writeFile(absPath, tempalteFunction);
 
@@ -238,76 +247,78 @@ function readFromLocal(fullPath) {
             return iconv.encode(tempalteFunction, outputCharset);
         }
 
-        // Added by jayli, Enhanced by liming.mlm
-        function lessCompiler(xcssfile, absPath) {
-            var buff = fs.readFileSync(xcssfile);
-            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
-            var lesstxt = iconv.decode(buff, charset);
+        // 处理css, Added by jayli, Enhanced by liming.mlm
+        if (/\.css$/i.test(absPath)) {
+            function lessCompiler(xcssfile, absPath) {
+                var buff = fs.readFileSync(xcssfile);
+                var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+                var lesstxt = iconv.decode(buff, charset);
 
-            lesstxt = lesstxt.replace(/\@import\s+["'](.+)["']\;/g, function(t, basename) {
-                var filepath = path.join(path.dirname(xcssfile), basename);
-                if (!/\.[a-z]{1,}$/i.test(filepath)) {
-                    filepath += ".less";
-                }
+                lesstxt = lesstxt.replace(/\@import\s+["'](.+)["']\;/g, function (t, basename) {
+                    var filepath = path.join(path.dirname(xcssfile), basename);
+                    if (!/\.[a-z]{1,}$/i.test(filepath)) {
+                        filepath += ".less";
+                    }
 
-                if (fs.existsSync(filepath)) {
-                    cosoleResp("Embed", filepath);
-                    return fs.readFileSync(filepath);
-                }
-                else {
-                    return '';
-                }
-            });
-
-            cosoleResp("Compile", xcssfile);
-
-            var content = new(less.Parser)({processImports:false})
-                .parse(lesstxt, function(e, tree) {
-                    cosoleResp("Local", xcssfile);
-                    return tree.toCSS();
+                    if (fs.existsSync(filepath)) {
+                        cosoleResp("Embed", filepath);
+                        return fs.readFileSync(filepath);
+                    }
+                    else {
+                        return '';
+                    }
                 });
 
-            if (absPath) fs.writeFile(absPath, content);
+                cosoleResp("Compile", xcssfile);
 
-            return content+"\n";
-        }
+                var content = new (less.Parser)({processImports: false})
+                    .parse(lesstxt, function (e, tree) {
+                        cosoleResp("Local", absPath ? absPath : xcssfile);
+                        return tree.toCSS();
+                    });
 
-        function scssCompiler(xcssfile, absPath) {
-            cosoleResp("Compiling", xcssfile);
+                if (absPath) fs.writeFile(absPath, content);
 
-            var content = sass.renderSync({
-                file: xcssfile,
-                success: function(css, map) {
-                    cosoleResp("Local", xcssfile);
-                }
-            });
+                return content + "\n";
+            }
 
-            if (absPath) fs.writeFile(absPath, content);
+            function scssCompiler(xcssfile, absPath) {
+                cosoleResp("Compiling", xcssfile);
 
-            return content+"\n";
-        }
+                var content = sass.renderSync({
+                    file: xcssfile,
+                    success: function (css, map) {
+                        cosoleResp("Local", absPath ? absPath : xcssfile);
+                    }
+                });
 
-        var xcssfile = absPath.replace(/\.css$/i, '');
+                if (absPath) fs.writeFile(absPath, content);
 
-        // 新增less文件解析 less.css => .less
-        if (/\.less\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-            return lessCompiler(xcssfile, absPath);
-        }
+                return content + "\n";
+            }
 
-        // scss文件解析 scss.css => scss
-        if (/\.scss\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-            return scssCompiler(xcssfile, absPath);
-        }
+            var xcssfile = absPath.replace(/\.css$/i, '');
 
-        // .css => .less
-        xcssfile = absPath.replace(/\.css$/i, '.less');
-        if (/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-            return lessCompiler(xcssfile);
-        }
-        // .css => .scss
-        xcssfile = absPath.replace(/\.css$/i, '.scss');
-        if (/\.css$/i.test(absPath) && !fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
-            return scssCompiler(xcssfile);
+            // less文件解析 less.css => .less
+            if (/\.less\.css$/i.test(absPath) && fs.existsSync(xcssfile)) {
+                return lessCompiler(xcssfile, absPath);
+            }
+
+            // scss文件解析 scss.css => scss
+            if (/\.scss\.css$/i.test(absPath) && fs.existsSync(xcssfile)) {
+                return scssCompiler(xcssfile, absPath);
+            }
+
+            // .css => .less
+            xcssfile = absPath.replace(/\.css$/i, '.less');
+            if (!fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+                return lessCompiler(xcssfile);
+            }
+            // .css => .scss
+            xcssfile = absPath.replace(/\.css$/i, '.scss');
+            if (!fs.existsSync(absPath) && fs.existsSync(xcssfile)) {
+                return scssCompiler(xcssfile);
+            }
         }
 
         if (fs.existsSync(absPath)) {
@@ -331,7 +342,7 @@ function readFromLocal(fullPath) {
     return null;
 }
 
-var merge = function(dest, src) {
+var merge = function (dest, src) {
     for (var i in src) {
         if (src[i] === Object(src[i])) {
             if (!dest[i]) {
@@ -345,27 +356,27 @@ var merge = function(dest, src) {
     return dest;
 }
 
-var cacheFileName = function(url) {
+var cacheFileName = function (url) {
     return crypto.createHash('md5').update(url).digest('hex');
 }
 
-var cacheFile = function(fullPath, content) {
+var cacheFile = function (fullPath, content) {
     var absPath = path.join(param.cacheDir, fullPath);
     var lastDir = path.dirname(absPath);
     if (/[<>\*\?]+/g.test(absPath)) {
-        debugInfo('Exception file name: can not cache to %s',absPath);
+        debugInfo('Exception file name: can not cache to %s', absPath);
         return;
     }
     if (!fs.existsSync(lastDir)) {
         debug('%s is not exist', lastDir);
-        mkdirp.sync(lastDir, {mode:0777});
+        mkdirp.sync(lastDir, {mode: 0777});
     }
 
     debug('保存缓存%s', fullPath);
-    fs.writeFileSync(absPath, content);
+    fs.writeFile(absPath, content);
 }
 
-var readFromCache = function(url, fullPath) {
+var readFromCache = function (url, fullPath) {
     var absPath = path.join(param.cacheDir, fullPath);
     if (fs.existsSync(absPath)) {
         cosoleResp('Cache', absPath);
@@ -394,17 +405,17 @@ function buildRequestOption(url, req) {
         host: param.hostIp || param.host,
         port: 80,
         path: url,
-        headers:{host:param.host}
+        headers: {host: param.host}
     };
 
     requestOption.headers = merge(requestOption.headers, param.headers);
-    requestOption.agent   = false;
+    requestOption.agent = false;
 
     if (param.hosts) {
         var reqHost = req.headers.host.split(':')[0];
         for (hostName in param.hosts) {
             if (reqHost == hostName) {
-                requestOption.host         = param.hosts[hostName];
+                requestOption.host = param.hosts[hostName];
                 requestOption.headers.host = hostName;
                 break;
             }
@@ -416,7 +427,7 @@ function buildRequestOption(url, req) {
 function isLoop(reqHost, requestOption) {
     //远程请求的域名不能和访问域名一致，否则会陷入请求循环。
     if (reqHost === requestOption.host) {
-        cosoleResp('Error', reqHost+" is will lead to Loop Req!");
+        cosoleResp('Error', reqHost + " is will lead to Loop Req!");
         return true;
     }
     else {
@@ -424,26 +435,27 @@ function isLoop(reqHost, requestOption) {
     }
 }
 
-exports = module.exports = function(prjDir, urls, options){
-    var userHome = process.env.HOME || process.env.USERPROFILE ||process.env.HOMEPATH;//兼容windows
+exports = module.exports = function (prjDir, urls, options) {
+    var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH;//兼容windows
 
     var cacheDir = path.join(userHome, '.flex-combo/cache');
     if (!fs.existsSync(cacheDir)) {
-        mkdirp.sync(cacheDir, {mode:0777});
+        mkdirp.sync(cacheDir, {mode: 0777});
     }
 
     var userConfigPath = path.join(userHome, '.flex-combo/config.json');
     if (!fs.existsSync(userConfigPath)) {
         if (!fs.existsSync(path.dirname(userConfigPath))) {
-            mkdirp.sync(path.dirname(userConfigPath), {mode:0777});
+            mkdirp.sync(path.dirname(userConfigPath), {mode: 0777});
         }
-        fs.writeFileSync(userConfigPath, beautify(JSON.stringify(param)));
+        fs.writeFile(userConfigPath, beautify(JSON.stringify(param)));
     }
     else {
         var paramStr = fs.readFileSync(userConfigPath);
         paramStr.toString().replace(/[\n\r]/g, '');
         param = merge(param, JSON.parse(paramStr));
     }
+
     param.cacheDir = cacheDir;
     if (urls) {
         param.urls = merge(param.urls, urls);
@@ -456,23 +468,26 @@ exports = module.exports = function(prjDir, urls, options){
     debug(util.inspect(param));
 
     var fileReg = new RegExp(param.supportedFile);
-    return function(req, res, next) {
-        if (typeof next != "function") {
-            next = function() {
-                res.writeHead(404, {'Content-Type': 'text/plain'});
-                res.end('Not Found.');
+    return function (req, res, next) {
+        function nextAction() {
+            try {
+                next();
+            }
+            catch (e) {
+                res.writeHead(500, {'Content-Type': 'text/html'});
+                res.end("<h1>Error 500</h1>");
             }
         }
 
         var reqHost = req.headers.host.split(':')[0];
-        var url     = urlLib.parse(req.url).path;
-        var prefix  = url.indexOf(param.servlet + '?');
+        var url = urlLib.parse(req.url).path;
+        var prefix = url.indexOf(param.servlet + '?');
 
         //不包含combo的servlet，认为是单一文件
         if (prefix === -1) {
             //combo不处理html文件，但是需要接管其他资源
             if (!fileReg.test(url)) {
-                next();
+                nextAction();
                 return;
             }
             cosoleResp('Need', url);
@@ -480,7 +495,7 @@ exports = module.exports = function(prjDir, urls, options){
             var filteredUrl = filterUrl(url);
             res.writeHead(200, {
                 "Access-Control-Allow-Origin": '*',
-                "Content-Type": mime.lookup(filteredUrl.split('?')[0])+';charset='+param.charset
+                "Content-Type": mime.lookup(filteredUrl.split('?')[0]) + ';charset=' + param.charset
             });
 
             var singleFileContent = readFromLocal(filteredUrl);
@@ -499,28 +514,22 @@ exports = module.exports = function(prjDir, urls, options){
             var requestOption = buildRequestOption(url, req);
 
             if (isLoop(reqHost, requestOption)) {
-                next();
+                nextAction();
                 return;
             }
 
-            http.get(requestOption, function(resp) {
+            http.get(requestOption, function (resp) {
                 var buffs = [];
                 if (resp.statusCode !== 200) {
                     cosoleResp("Disable", requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
 
-                    try {
-                        next();
-                    }
-                    catch(e) {
-                        res.writeHead(404, {'Content-Type': 'text/plain'});
-                        res.end('Not Found.');
-                    }
+                    nextAction();
                     return;
                 }
-                resp.on('data', function(chunk) {
+                resp.on('data', function (chunk) {
                     buffs.push(chunk);
                 });
-                resp.on('end', function() {
+                resp.on('end', function () {
                     var buff = joinbuffers(buffs);
 
                     //fix 80% situation bom problem.quick and dirty
@@ -541,7 +550,7 @@ exports = module.exports = function(prjDir, urls, options){
                     // 允许为某个url特别指定编码
                     var charset = isUtf8(buff) ? 'utf8' : 'gbk';
                     var longestMatchPos = longgestMatchedDir(filteredUrl);
-                    var outputCharset   = param.charset;
+                    var outputCharset = param.charset;
                     if (longestMatchPos) {
                         if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                             outputCharset = param.urlBasedCharset[longestMatchPos];
@@ -552,12 +561,12 @@ exports = module.exports = function(prjDir, urls, options){
                     return;
                 });
             })
-            .on('error',function(e) {
-                debugInfo('Networking error:' + e.message);
-                res.writeHead(404, {'Content-Type': 'text/html;charset=utf-8'});
-                res.end('404 Error, File not found.');
-                return;
-            });
+                .on('error', function (e) {
+                    debugInfo('Networking error:' + e.message);
+                    res.writeHead(404, {'Content-Type': 'text/html;charset=utf-8'});
+                    res.end('404 Error, File not found.');
+                    return;
+                });
             return;
         }
 
@@ -575,8 +584,8 @@ exports = module.exports = function(prjDir, urls, options){
             //combo URL有时候会多一个逗号
             if (file === '') continue;
             var fullPath = filterUrl(prefix + files[i]);
-            if (i === 0 ) {
-                res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0])+';charset='+param.charset);
+            if (i === 0) {
+                res.setHeader('Content-Type', mime.lookup(fullPath.split('?')[0]) + ';charset=' + param.charset);
             }
 
             var fileContent = readFromLocal(fullPath);
@@ -597,7 +606,7 @@ exports = module.exports = function(prjDir, urls, options){
         }
 
         if (prevNeedHttp) {
-            reqArray.push({file: needHttpGet, ready:false});
+            reqArray.push({file: needHttpGet, ready: false});
         }
 
         var reqPath = prefix + param.servlet + '?';
@@ -613,29 +622,29 @@ exports = module.exports = function(prjDir, urls, options){
                 continue;
             }
 
-            (function(id) {
+            (function (id) {
                 var requestPath = reqPath + reqArray[id].file;
                 var requestOption = buildRequestOption(requestPath, req);
 
                 if (isLoop(reqHost, requestOption)) {
                     reqArray[id].ready = true;
-                    reqArray[id].content = 'Request '+ reqHost +' is Forbidden.';
+                    reqArray[id].content = 'Request ' + reqHost + ' is Forbidden.';
                 }
                 else {
-                    http.get(requestOption, function(resp) {
+                    http.get(requestOption, function (resp) {
                         if (resp.statusCode !== 200) {
                             cosoleResp("Disable", requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                             reqArray[id].ready = true;
-                            reqArray[id].content = 'File '+ reqArray[id].file +' not found.';
+                            reqArray[id].content = 'File ' + reqArray[id].file + ' not found.';
                             sendData();
                             return;
                         }
 
                         var buffs = [];
-                        resp.on('data', function(chunk) {
+                        resp.on('data', function (chunk) {
                             buffs.push(chunk);
                         });
-                        resp.on('end', function() {
+                        resp.on('end', function () {
                             cosoleResp('Remote', requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                             reqArray[id].ready = true;
                             var buff = joinbuffers(buffs);
@@ -651,21 +660,21 @@ exports = module.exports = function(prjDir, urls, options){
                             sendData();
                         });
                     })
-                    .on('error',function(e) {
-                        reqArray[id].ready = true;
-                        debug('Networking error:' + e.message);
-                    });
+                        .on('error', function (e) {
+                            reqArray[id].ready = true;
+                            debug('Networking error:' + e.message);
+                        });
                 }
             })(i);
         }
 
-        var sendData = function() {
+        var sendData = function () {
             for (var j = 0, len = reqArray.length; j < len; j++) {
                 if (reqArray[j].ready === false) {
                     return;
                 }
             }
-            reqArray.forEach(function(reqNode) {
+            reqArray.forEach(function (reqNode) {
                 res.write(reqNode.content);
             });
             res.end();
