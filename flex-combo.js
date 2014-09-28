@@ -264,7 +264,7 @@ function readFromLocal(fullPath) {
             return new(less.Parser)({processImports:false})
                 .parse(lesstxt, function(e, tree) {
                     cosoleResp("Local", xcssfile);
-                    return tree.toCSS();
+                    return tree.toCSS()+"\n";
                 });
         }
 
@@ -276,7 +276,7 @@ function readFromLocal(fullPath) {
                 success: function(css, map) {
                     cosoleResp("Local", xcssfile);
                 }
-            });
+            })+"\n";
         }
 
         var xcssfile = absPath.replace(/\.css$/i, '');
@@ -500,7 +500,13 @@ exports = module.exports = function(prjDir, urls, options){
                 if (resp.statusCode !== 200) {
                     cosoleResp("Disable", requestOption.headers.host + requestOption.path + " (HOST: " + requestOption.host + ')');
 
-                    next();
+                    try {
+                        next();
+                    }
+                    catch(e) {
+                        res.writeHead(404, {'Content-Type': 'text/plain'});
+                        res.end('Not Found.');
+                    }
                     return;
                 }
                 resp.on('data', function(chunk) {
