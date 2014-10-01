@@ -21,11 +21,12 @@ var http = require('http')
     , mkdirp = require('mkdirp')
     , crypto = require('crypto')
     , util = require('util')
-    , delog = require("debug.log")
     , mime = require('mime')
     , joinbuffers = require('joinbuffers')
     , debug = require('debug')('flex-combo:debug')
     , debugInfo = require('debug')('flex-combo:info')
+    , delog = require("debug.log")
+    , feloader = require('feloader')
     , RC = require("readyconf");
 
 var param = {
@@ -160,6 +161,19 @@ function readFromLocal(fullPath) {
             absPath = path.normalize(path.join(param.prjDir, dir, revPath));
         }
 
+        // html.js
+        var jstpl = feloader.jstpl(absPath, revPath, param.define, param.anonymous);
+        if (jstpl) {
+            fs.writeFile(absPath, jstpl);
+            return jstpl;
+        }
+
+        // compile less.css OR scss.css
+        var css = feloader.css(absPath);
+        if (css) {
+            return css;
+        }
+
         if (fs.existsSync(absPath)) {
             cosoleResp('Local', absPath);
 
@@ -271,7 +285,6 @@ exports = module.exports = function (prjDir, urls, options) {
         param = RC.merge(true, param, options);
     }
     debug(util.inspect(param));
-    console.log(options)
 
     return function (req, res, next) {
         function nextAction() {
