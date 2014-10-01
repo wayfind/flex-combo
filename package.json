@@ -10,17 +10,17 @@
         "test": "test"
     },
     "dependencies": {
-        "iconv-lite": "~0.2.5",
+        "iconv-lite": "~0.4.0",
         "is-utf8": "~0.2.0",
         "joinbuffers": "~0.1.1",
         "crypto": "0.0.3",
-        "mkdirp": "0.3.4",
-        "commander": "1.0.4",
-        "mime": "1.2.7",
-        "debug": "0.7.0",
-        "debug.log": "^0.0.3",
-        "readyconf": "^0.0.1",
-        "feloader":"^0.1.0"
+        "mkdirp": "~0.5.0",
+        "commander": "~2.3.0",
+        "mime": "~1.2.11",
+        "debug": "~0.7.0",
+        "debug.log": "~0.0.3",
+        "readyconf": "~0.0.1",
+        "feloader":"~0.1.0"
     },
     "devDependencies": {},
     "scripts": {

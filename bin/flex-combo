@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-
 var begin = new Date();
 var util = require('util');
 var debug = require('debug')('flex-combo:bin');
@@ -21,7 +20,7 @@ var helpInfo = {
 var LANG = process.env.LANG || 'zh';
 var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
 program
-  .version('0.3.4')
+  .version(require(__dirname+'/../package.json').version)
   .option('-d, --dir [string]', helpInfo.dir[langIndex])
   .option('-u, --url [string]', helpInfo.url[langIndex])
   .option('-H, --host [string]', helpInfo.host[langIndex])
