@@ -1,6 +1,6 @@
 var flexCombo = require("./flex-combo");
 var RC = require("readyconf");
-var pathLib   = require("path");
+var pathLib = require("path");
 
 module.exports = function(dir) {
     var param = {

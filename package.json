@@ -19,7 +19,7 @@
         "mime": "~1.2.11",
         "debug": "~0.7.0",
         "debug.log": "~0.0.3",
-        "readyconf": "~0.0.1",
+        "readyconf": "~0.0.2",
         "feloader":"~0.1.0"
     },
     "devDependencies": {},
