@@ -162,14 +162,14 @@ function readFromLocal(fullPath) {
         }
 
         // html.js
-        var jstpl = feloader.jstpl(absPath, revPath, param.define, param.anonymous);
+        var jstpl = feloader.jstpl(absPath, param.charset, revPath, param.define, param.anonymous);
         if (jstpl) {
             fs.writeFile(absPath, jstpl);
             return jstpl;
         }
 
         // compile less.css OR scss.css
-        var css = feloader.css(absPath);
+        var css = feloader.css(absPath, param.charset);
         if (css) {
             return css;
         }
@@ -456,7 +456,7 @@ exports = module.exports = function (prjDir, urls, options) {
 
                 if (isLoop(reqHost, requestOption)) {
                     reqArray[id].ready = true;
-                    reqArray[id].content = 'Request ' + reqHost + ' is Forbidden.';
+                    reqArray[id].content = '/* Request ' + reqHost + ' is Forbidden. */';
                 }
                 else {
                     http
@@ -464,7 +464,7 @@ exports = module.exports = function (prjDir, urls, options) {
                             if (resp.statusCode !== 200) {
                                 cosoleResp("Disable", requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                                 reqArray[id].ready = true;
-                                reqArray[id].content = 'File ' + reqArray[id].file + ' not found.';
+                                reqArray[id].content = '/* File ' + reqArray[id].file + ' not found. */';
                                 sendData();
                                 return;
                             }
