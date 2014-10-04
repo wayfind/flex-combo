@@ -88,9 +88,6 @@ function cosoleResp(type, c) {
 }
 
 function adaptCharset(buff, outCharset, charset) {
-    outCharset = outCharset.replace(/utf\-/, "utf");
-    charset = charset.replace(/utf\-/, "utf");
-
     if (charset === outCharset) {
         return buff;
     }
@@ -187,7 +184,7 @@ function readFromLocal(fullPath) {
             }
 
             // 允许为某个url特别指定编码
-            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+            var charset = isUtf8(buff) ? 'utf-8' : 'gbk';
             var outputCharset = param.charset;
             if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
@@ -230,7 +227,7 @@ var readFromCache = function (url, fullPath) {
         }
 
         // 允许为某个url特别指定编码
-        var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+        var charset = isUtf8(buff) ? 'utf-8' : 'gbk';
         var outputCharset = param.charset;
         var longestMatchPos = longgestMatchedDir(url);
         if (longestMatchPos) {
@@ -287,6 +284,9 @@ exports = module.exports = function (prjDir, urls, options) {
     }
     if (options) {
         param = merge(true, param, options);
+    }
+    if (param.charset) {
+        param.charset = param.charset.replace(/utf(\d+)/, "utf-$1");
     }
     debug(util.inspect(param));
 
@@ -372,7 +372,7 @@ exports = module.exports = function (prjDir, urls, options) {
                             cacheFile(cacheFileName(path.join(reqHost, url)), buff);
 
                             // 允许为某个url特别指定编码
-                            var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+                            var charset = isUtf8(buff) ? 'utf-8' : 'gbk';
                             var longestMatchPos = longgestMatchedDir(filteredUrl);
                             var outputCharset = param.charset;
                             if (longestMatchPos) {
@@ -488,7 +488,7 @@ exports = module.exports = function (prjDir, urls, options) {
                                         buff = buff.slice(3, buff.length);
                                     }
 
-                                    var charset = isUtf8(buff) ? 'utf8' : 'gbk';
+                                    var charset = isUtf8(buff) ? 'utf-8' : 'gbk';
                                     reqArray[id].content = adaptCharset(buff, param.charset, charset);
                                     cacheFile(cacheFileName(path.join(reqHost, reqArray[id].file)), buff);
                                     sendData();
