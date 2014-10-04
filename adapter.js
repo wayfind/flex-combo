@@ -1,8 +1,9 @@
 var flexCombo = require("./flex-combo");
-var RC = require("readyconf");
+var readyconf = require("readyconf");
+var merge = readyconf.merge;
 var pathLib = require("path");
 
-module.exports = function(dir) {
+module.exports = function(dir, CMD) {
     var param = {
         urls: {'/':"src"},
         hosts: {"a.tbcdn.cn": "122.225.67.241", "g.tbcdn.cn": "115.238.23.250"},
@@ -22,7 +23,11 @@ module.exports = function(dir) {
         anonymous: false
     };
 
-    param = RC.init(pathLib.join(process.cwd(), dir, pathLib.basename(__dirname)+".json"), param);
+    param = readyconf.init(pathLib.join(process.cwd(), dir, pathLib.basename(__dirname)+".json"), param);
+
+    if (typeof CMD.target != "undefined") {
+        param = merge(param, {urls:{'/':CMD.target}});
+    }
 
     return function (next) {
         var comboInst = flexCombo(process.cwd(), param.urls, param);
