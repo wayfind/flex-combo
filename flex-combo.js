@@ -26,8 +26,9 @@ var http = require('http')
     , debug = require('debug')('flex-combo:debug')
     , debugInfo = require('debug')('flex-combo:info')
     , delog = require("debug.log")
-    , feloader = require('feloader')
-    , RC = require("readyconf");
+    , dac = require('dac')
+    , readyconf = require("readyconf")
+    , merge = readyconf.merge;
 
 var param = {
     urls: {},
@@ -53,7 +54,7 @@ if (!fs.existsSync(cacheDir)) {
     mkdirp.sync(cacheDir, {mode: 0777});
 }
 
-param = RC.init(path.join(userHome, '.flex-combo/config.json'), param);
+param = readyconf.init(path.join(userHome, '.flex-combo/config.json'), param);
 
 param.cacheDir = cacheDir;
 param.prjDir = process.cwd();
@@ -91,7 +92,7 @@ function adaptCharset(buff, outCharset, charset) {
         return buff;
     }
 
-    return iconv.encode(iconv.decode(buff, charset), outCharset);
+    return iconv.encode(iconv.decode(buff, charset)+"\n", outCharset);
 }
 
 function filterUrl(url) {
@@ -162,14 +163,14 @@ function readFromLocal(fullPath) {
         }
 
         // html.js
-        var jstpl = feloader.jstpl(absPath, param.charset, revPath, param.define, param.anonymous);
+        var jstpl = dac.jstpl(absPath, param.charset, revPath, param.define, param.anonymous);
         if (jstpl) {
             fs.writeFile(absPath, jstpl);
             return jstpl;
         }
 
         // compile less.css OR scss.css
-        var css = feloader.css(absPath, param.charset);
+        var css = dac.css(absPath, param.charset);
         if (css) {
             return css;
         }
@@ -188,7 +189,7 @@ function readFromLocal(fullPath) {
             if (param.urlBasedCharset && param.urlBasedCharset[longestMatchPos]) {
                 outputCharset = param.urlBasedCharset[longestMatchPos];
             }
-            return adaptCharset(buff, outputCharset, charset)+"\n";
+            return adaptCharset(buff, outputCharset, charset);
         }
 
     }
@@ -247,7 +248,7 @@ function buildRequestOption(url, req) {
         headers: {host: req.headers.host}
     };
 
-    requestOption.headers = RC.merge(true, requestOption.headers, param.headers);
+    requestOption.headers = merge(true, requestOption.headers, param.headers);
     requestOption.agent = false;
 
     if (param.hosts) {
@@ -279,10 +280,10 @@ exports = module.exports = function (prjDir, urls, options) {
         param.prjDir = prjDir;
     }
     if (urls) {
-        param.urls = RC.merge(param.urls, urls);
+        param.urls = merge(param.urls, urls);
     }
     if (options) {
-        param = RC.merge(true, param, options);
+        param = merge(true, param, options);
     }
     debug(util.inspect(param));
 
@@ -464,7 +465,7 @@ exports = module.exports = function (prjDir, urls, options) {
                             if (resp.statusCode !== 200) {
                                 cosoleResp("Disable", requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                                 reqArray[id].ready = true;
-                                reqArray[id].content = '/* File ' + reqArray[id].file + ' not found. */';
+                                reqArray[id].content = '/* File ' + reqArray[id].file + ' Not Found. */';
                                 sendData();
                                 return;
                             }
