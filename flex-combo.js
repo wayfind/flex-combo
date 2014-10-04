@@ -88,6 +88,9 @@ function cosoleResp(type, c) {
 }
 
 function adaptCharset(buff, outCharset, charset) {
+    outCharset = outCharset.replace(/utf\-/, "utf");
+    charset = charset.replace(/utf\-/, "utf");
+
     if (charset === outCharset) {
         return buff;
     }
