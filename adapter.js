@@ -1,9 +1,10 @@
+var pathLib = require("path");
+var urlLib = require("url");
 var flexCombo = require("./flex-combo");
 var readyconf = require("readyconf");
 var merge = readyconf.merge;
-var pathLib = require("path");
 
-module.exports = function(dir, CMD) {
+module.exports = function(confdir, highParam) {
     var param = {
         urls: {'/':"src"},
         hosts: {"a.tbcdn.cn": "122.225.67.241", "g.tbcdn.cn": "115.238.23.250"},
@@ -23,14 +24,17 @@ module.exports = function(dir, CMD) {
         anonymous: false
     };
 
-    param = readyconf.init(pathLib.join(process.cwd(), dir, pathLib.basename(__dirname)+".json"), param);
-
-    if (typeof CMD.target != "undefined") {
-        param = merge(param, {urls:{'/':CMD.target}});
+    param = readyconf.init(pathLib.join(process.cwd(), confdir, pathLib.basename(__dirname)+".json"), param);
+    if (highParam) {
+        param = merge.recursive(param, highParam);
     }
 
     return function (next) {
-        var comboInst = flexCombo(process.cwd(), param.urls, param);
-        comboInst(this.req, this.res, next);
+        if ((urlLib.parse(this.req.url).pathname).match(/^\/_virtual/)) {
+            next();
+        }
+        else {
+            flexCombo(process.cwd(), param.urls, param)(this.req, this.res, next);
+        }
     }
 }

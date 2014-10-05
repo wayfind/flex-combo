@@ -49,12 +49,12 @@ var param = {
 };
 
 var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
-var cacheDir = path.join(userHome, '.flex-combo/cache');
+var commonDir = path.join(userHome, '.'+path.basename(__dirname));
+var cacheDir = path.join(commonDir, "cache");
 if (!fs.existsSync(cacheDir)) {
     mkdirp.sync(cacheDir, {mode: 0777});
 }
-
-param = readyconf.init(path.join(userHome, '.flex-combo/config.json'), param);
+param = readyconf.init(path.join(commonDir, "config.json"), param);
 
 param.cacheDir = cacheDir;
 param.prjDir = process.cwd();
@@ -248,7 +248,7 @@ function buildRequestOption(url, req) {
         headers: {host: req.headers.host}
     };
 
-    requestOption.headers = merge(true, requestOption.headers, param.headers);
+    requestOption.headers = merge.recursive(requestOption.headers, param.headers);
     requestOption.agent = false;
 
     if (param.hosts) {
@@ -280,10 +280,10 @@ exports = module.exports = function (prjDir, urls, options) {
         param.prjDir = prjDir;
     }
     if (urls) {
-        param.urls = merge(param.urls, urls);
+        param.urls = merge.recursive(param.urls, urls);
     }
     if (options) {
-        param = merge(true, param, options);
+        param = merge.recursive(param, options);
     }
     if (param.charset) {
         param.charset = param.charset.replace(/utf(\d+)/, "utf-$1");
