@@ -483,7 +483,7 @@ exports = module.exports = function (prjDir, urls, options) {
                                     reqArray[id].ready = true;
                                     var buff = joinbuffers(buffs);
 
-                                    //fix 80% situation bom problem.quick and dirty
+                                    // Fix 80% situation bom problem. Quick and dirty.
                                     if (buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
                                         buff = buff.slice(3, buff.length);
                                     }

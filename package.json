@@ -20,7 +20,7 @@
         "debug": "~0.7.0",
         "debug.log": "~0.0.3",
         "readyconf": "~0.0.4",
-        "dac":"~0.1.7"
+        "dac":"~0.1.8"
     },
     "devDependencies": {},
     "scripts": {
