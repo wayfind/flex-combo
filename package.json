@@ -1,41 +1,39 @@
 {
-    "name": "flex-combo",
-    "version": "0.6.4",
-    "description": "The Flex-combo is combo tool designed for web front-end developer. It support various kinds of combo format by modify configuration(eg. yahoo combo).",
-    "main": "flex-combo.js",
-    "bin": {
-        "flex-combo": "./bin/flex-combo"
-    },
-    "directories": {
-        "test": "test"
-    },
-    "dependencies": {
-        "iconv-lite": "~0.4.0",
-        "is-utf8": "~0.2.0",
-        "joinbuffers": "~0.1.1",
-        "crypto": "0.0.3",
-        "mkdirp": "~0.5.0",
-        "commander": "~2.3.0",
-        "mime": "~1.2.11",
-        "debug": "~0.7.0",
-        "debug.log": "~0.0.3",
-        "readyconf": "~0.0.4",
-        "dac":"~0.1.8"
-    },
-    "devDependencies": {},
-    "scripts": {
-        "test": "node ./test.js"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/wayfind/flex-combo.git"
-    },
-    "keywords": [
-        "combo",
-        "js",
-        "node",
-        "taobao"
-    ],
-    "author": "wayfind",
-    "license": "BSD"
+  "name": "flex-combo",
+  "version": "0.6.5",
+  "description": "The Flex-combo is combo tool designed for web front-end developer. It support various kinds of combo format by modify configuration(eg. yahoo combo).",
+  "main": "flex-combo.js",
+  "bin": {
+    "flex-combo": "./bin/flex-combo"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "commander": "~2.5.0",
+    "crypto": "0.0.3",
+    "dac": "~0.1.9",
+    "debug": "~0.7.0",
+    "debug.log": "~0.0.3",
+    "iconv-lite": "~0.4.0",
+    "is-utf8": "~0.2.0",
+    "mace": "~2.0.0",
+    "mime": "~1.2.11"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node ./test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wayfind/flex-combo.git"
+  },
+  "keywords": [
+    "combo",
+    "js",
+    "node",
+    "taobao"
+  ],
+  "author": "wayfind",
+  "license": "BSD"
 }

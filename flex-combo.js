@@ -18,17 +18,14 @@ var http = require('http')
     , path = require('path')
     , isUtf8 = require('is-utf8')
     , iconv = require('iconv-lite')
-    , mkdirp = require('mkdirp')
+    , mace = require('mace')
     , crypto = require('crypto')
     , util = require('util')
     , mime = require('mime')
-    , joinbuffers = require('joinbuffers')
     , debug = require('debug')('flex-combo:debug')
     , debugInfo = require('debug')('flex-combo:info')
     , delog = require("debug.log")
-    , dac = require('dac')
-    , readyconf = require("readyconf")
-    , merge = readyconf.merge;
+    , dac = require('dac');
 
 var param = {
     urls: {},
@@ -52,9 +49,24 @@ var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPA
 var commonDir = path.join(userHome, '.'+path.basename(__dirname));
 var cacheDir = path.join(commonDir, "cache");
 if (!fs.existsSync(cacheDir)) {
-    mkdirp.sync(cacheDir, {mode: 0777});
+    mace.mkdirPSync(cacheDir, {mode: 0777});
 }
-param = readyconf.init(path.join(commonDir, "config.json"), param);
+
+(function (confFile, param) {
+    var confDir = path.dirname(confFile);
+    if (!fs.existsSync(confDir)) {
+        mace.mkdirPSync(confDir, {mode: 0777});
+    }
+
+    if (!fs.existsSync(confFile)) {
+        fs.writeFileSync(confFile, JSON.stringify(param, null, 4), {encoding:"utf-8"});
+    }
+    else {
+        param = mace.merge(true, param, JSON.parse(fs.readFileSync(confFile, {encoding:"utf-8"})));
+    }
+
+    return param;
+})(path.join(commonDir, "config.json"), param);
 
 param.cacheDir = cacheDir;
 param.prjDir = process.cwd();
@@ -209,7 +221,7 @@ var cacheFile = function (fullPath, content) {
     }
     if (!fs.existsSync(lastDir)) {
         debug('%s is not exist', lastDir);
-        mkdirp.sync(lastDir, {mode: 0777});
+        mace.mkdirPSync(lastDir, {mode: 0777});
     }
 
     debug('保存缓存%s', fullPath);
@@ -248,7 +260,7 @@ function buildRequestOption(url, req) {
         headers: {host: req.headers.host}
     };
 
-    requestOption.headers = merge.recursive(requestOption.headers, param.headers);
+    requestOption.headers = mace.merge(true, requestOption.headers, param.headers);
     requestOption.agent = false;
 
     if (param.hosts) {
@@ -280,10 +292,10 @@ exports = module.exports = function (prjDir, urls, options) {
         param.prjDir = prjDir;
     }
     if (urls) {
-        param.urls = merge.recursive(param.urls, urls);
+        param.urls = mace.merge(true, param.urls, urls);
     }
     if (options) {
-        param = merge.recursive(param, options);
+        param = mace.merge(true, param, options);
     }
     if (param.charset) {
         param.charset = param.charset.replace(/utf(\d+)/, "utf-$1");
@@ -354,7 +366,7 @@ exports = module.exports = function (prjDir, urls, options) {
                             buffs.push(chunk);
                         })
                         .on('end', function () {
-                            var buff = joinbuffers(buffs);
+                            var buff = mace.joinBuffer(buffs);
 
                             //fix 80% situation bom problem.quick and dirty
                             if (buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
@@ -481,7 +493,7 @@ exports = module.exports = function (prjDir, urls, options) {
                                 .on('end', function () {
                                     cosoleResp('Remote', requestOption.headers.host + reqPath + reqArray[id].file + " (HOST: " + requestOption.host + ')');
                                     reqArray[id].ready = true;
-                                    var buff = joinbuffers(buffs);
+                                    var buff = mace.joinBuffer(buffs);
 
                                     // Fix 80% situation bom problem. Quick and dirty.
                                     if (buff[0] === 239 && buff[1] === 187 && buff[2] === 191) {
