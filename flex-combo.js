@@ -352,6 +352,11 @@ exports = module.exports = function (prjDir, urls, options) {
                 return;
             }
 
+			if( requestOption.host.indexOf(':') > 0 ) {
+				var _port = requestOption.host.match(/\d+$/)[0];
+				requestOption.host = requestOption.host.replace(/:\d+$/,'');
+				requestOption.port = _port;
+			}
             http
                 .get(requestOption, function (resp) {
                     var buffs = [];
