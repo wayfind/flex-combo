@@ -346,7 +346,7 @@ function FlexCombo(param, flag) {
         anonymous: false
     };
 
-    if (flag.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(flag)) {
+    if (flag && flag.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(flag)) {
         this.confFile = pathLib.join(flag, "config.json");
     }
     else {
