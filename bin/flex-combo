@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 
-var begin = new Date();
-var util = require('util');
-var debug = require('debug')('flex-combo:bin');
-
-var program = require('commander');
 var helpInfo = {
     'dir':['本地目录。默认情况下是执行命令的当前目录。','Directory'],
     'url':['本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。','URL The current directory will mapped to.'],
@@ -16,20 +11,22 @@ var helpInfo = {
     'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','Help'],
     'port':['flex-combo运行的端口号。默认是80', 'Port'],
     'forwardPrefix':['转发的url统一增加前缀', 'Add prefix to url while forwarding to Combo server']
-    };
+};
 var LANG = process.env.LANG || 'zh';
 var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
+
+var program = require("commander");
 program
-  .version(require(__dirname+'/../package.json').version)
-  .option('-d, --dir [string]', helpInfo.dir[langIndex])
-  .option('-u, --url [string]', helpInfo.url[langIndex])
-  .option('-H, --host [string]', helpInfo.host[langIndex])
-  .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
-  .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
-  .option('-c, --charset [string]', helpInfo.charset[langIndex])
-  .option('-p, --port [string]', helpInfo.port[langIndex])
-  .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
-  .parse(process.argv);
+    .version(require(__dirname+'/../package.json').version)
+    .option('-d, --dir [string]', helpInfo.dir[langIndex])
+    .option('-u, --url [string]', helpInfo.url[langIndex])
+    .option('-H, --host [string]', helpInfo.host[langIndex])
+    .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
+    .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
+    .option('-c, --charset [string]', helpInfo.charset[langIndex])
+    .option('-p, --port [string]', helpInfo.port[langIndex])
+    .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
+    .parse(process.argv);
 
 var url = program.url || '/';
 var dir = program.dir || '.';
@@ -41,7 +38,7 @@ if(program.servlet){
     param.servlet = program.servlet;
 }
 if(program.seperator){
-    param.seperator= program.seperator;
+    param.seperator = program.seperator;
 }
 if(program.charset){
     param.charset = program.charset;
@@ -52,18 +49,26 @@ if(program.host){
 if(program.forwardPrefix){
     param.forwardPrefix = program.forwardPrefix;
 }
-var flexCombo = require('../flex-combo');
+
 var port = program.port || 80;
 
+var flexCombo = require('../compatibility');
 var http = require('http');
 var comboInst = flexCombo(process.cwd(), param.urls, param);
+
 http.createServer(function (req, res) {
-    comboInst(req, res, function(){
+    function next(){
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Your combo file not found.');
-    })
-}).listen(port, '0.0.0.0');
-var end = new Date();
-var spend = end.getTime()-begin.getTime();
-console.log('Flex Combo Server running at http://127.0.0.1:'+port);
-console.log('Server starup in ' +spend+' ms');
+    }
+
+    try {
+        comboInst(req, res, next);
+    }
+    catch (e) {
+        next();
+    }
+})
+.listen(port, function() {
+    console.log('Flex Combo Server running at http://127.0.0.1:'+port);
+});
