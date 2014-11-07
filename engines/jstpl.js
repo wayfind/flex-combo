@@ -34,29 +34,31 @@ var method_body = [
 exports.compile = function(htmlfile, _url) {
     htmlfile = htmlfile.replace(/\.js$/, '');
 
-    try {
-        var compiled = juicer(helper.getUnicode(htmlfile))._render.toString("utf-8").replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function ($, fn_body) {
-            return "function(_, _method) {" + method_body + fn_body + "};\n";
-        });
-    }
-    catch (e) {
-        return "/* ["+htmlfile+"] Juicer COMPILE ERROR! */";
-    }
+    var tpl = helper.getUnicode(htmlfile);
+    if (tpl) {
+        try {
+            var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function ($, fn_body) {
+                return "function(_, _method) {" + method_body + fn_body + "};\n";
+            });
+        }
+        catch (e) {
+            return null;
+        }
 
-    var wrapper = this.param.define;
-    var packageName = helper.filteredUrl(_url, this.param.filter);
-    var jstpl = '';
-    if (!wrapper || "string" !== typeof wrapper || !!~["window", "global", "self", "parent", "Window", "Global"].indexOf(wrapper)) {
-        jstpl = "window[\"" + packageName + "\"] = " + compiled;
-    }
-    else {
-        if (this.param.anonymous) {
-            jstpl = wrapper + "(function(){return " + compiled + "});";
+        var wrapper = this.param.define;
+        var packageName = helper.filteredUrl(_url, this.param.filter);
+        if (!wrapper || "string" !== typeof wrapper || !!~["window", "global", "self", "parent", "Window", "Global"].indexOf(wrapper)) {
+            return "window[\"" + packageName + "\"] = " + compiled;
         }
         else {
-            jstpl = wrapper + "(\"" + packageName + "\", function () {return " + compiled + "});";
+            if (this.param.anonymous) {
+                return wrapper + "(function(){return " + compiled + "});";
+            }
+            else {
+                return wrapper + "(\"" + packageName + "\", function () {return " + compiled + "});";
+            }
         }
     }
 
-    return jstpl;
+    return null;
 };

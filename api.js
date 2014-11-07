@@ -278,11 +278,13 @@ FlexCombo.prototype = {
             func: function(htmlfile, url) {
                 var jstpl = require("./engines/jstpl");
                 var content = jstpl.compile.call(this, htmlfile, url);
-                fsLib.writeFile(htmlfile, convert.call(this, content), function(e){
-                    if (e) {
-                        console.log(e);
-                    }
-                });
+                if (content) {
+                    fsLib.writeFile(htmlfile, convert.call(this, content), function(e) {
+                        if (e) {
+                            console.log(e);
+                        }
+                    });
+                }
                 return content;
             }
         }
@@ -290,8 +292,8 @@ FlexCombo.prototype = {
     addEngine: function(rule, func) {
         if (rule && typeof func == "function") {
             this.engines.push({
-                "rule": rule,
-                "func": func
+                rule: rule,
+                func: func
             });
         }
     },
@@ -419,8 +421,11 @@ FlexCombo.prototype = {
             }
             sendData();
         }
-        else {
+        else if (typeof next == "function") {
             next();
+        }
+        else {
+            console.log("Done");
         }
     }
 };

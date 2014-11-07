@@ -9,5 +9,5 @@ exports.compile = function(xcssfile) {
         }) + "\n";
     }
 
-    return "/* ["+xcssfile+"] EMPTY! */";
+    return null;
 };

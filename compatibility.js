@@ -7,7 +7,7 @@ module = module.exports = function(cwd, urls, param) {
     var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
     var flag = pathLib.join(userHome, ".flex-combo");
 
-    var FlexCombo = require("../flex-combo");
+    var FlexCombo = require("./api");
     var fcInst = null;
 
     return function(req, res, next) {
