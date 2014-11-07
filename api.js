@@ -232,7 +232,7 @@ FlexCombo.prototype = {
         this.param = utilLib.merge(true, this.param, conf, param||{});
     },
     parser: function(_url) {
-        var url = urlLib.parse(_url).path.replace(/\\/g, '/').replace(/\?(\w+)=(.+)$/, '');
+        var url = urlLib.parse(_url).path.replace(/\\/g, '/');
         var prefix = url.indexOf(this.param.servlet+'?');
 
         if (prefix != -1) {
