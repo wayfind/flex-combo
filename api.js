@@ -321,31 +321,30 @@ FlexCombo.prototype = {
                 var protocol = (req.protocol || "http")+':';
 
                 var H = req.headers.host.split(':');
-                var reqHost = H[0];
-                var reqPort = H[1] || (protocol=="https" ? 443 : 80);
-
-                var requestOption = {
-                    protocol: protocol,
-                    host: this.param.hostIp || reqHost,
-                    port: reqPort,
-                    path: url,
-                    method: req.method || "GET",
-                    agent: false,
-                    headers: {host: reqHost}
-                };
-                requestOption.headers = utilLib.merge(true, this.param.headers, requestOption.headers);
+                var reqHostIP   = H[0];
+                var reqHostName = H[0];
+                var reqPort = H[1] || (protocol=="https:" ? 443 : 80);
 
                 if (this.param.hosts) {
                     for (hostName in this.param.hosts) {
-                        if (reqHost == hostName) {
-                            requestOption.host = this.param.hosts[hostName];
-                            requestOption.headers.host = hostName;
+                        if (reqHostName == hostName) {
+                            reqHostIP = this.param.hosts[hostName];
                             break;
                         }
                     }
                 }
 
-                if (reqHost == requestOption.host) {
+                var requestOption = {
+                    protocol: protocol,
+                    host: this.param.hostIp || reqHostIP,
+                    port: reqPort,
+                    path: url,
+                    method: req.method || "GET",
+                    headers: {host: reqHostName}
+                };
+                requestOption.headers = utilLib.merge(true, this.param.headers, requestOption.headers);
+
+                if (reqHostIP == reqHostName) {
                     return false;
                 }
                 return requestOption;
@@ -390,7 +389,7 @@ FlexCombo.prototype = {
                                 var buffer = [];
                                 nsres
                                     .on("error", function () {
-                                        Q[i] = convert.call(self, new Buffer("/* "+file+" Proxy ERROR! */"));
+                                        Q[i] = convert.call(self, new Buffer("/* " + file + " Proxy ERROR! */"));
                                         Log.error(file);
                                         sendData();
                                     })
@@ -406,7 +405,7 @@ FlexCombo.prototype = {
                                     });
                             })
                             .on("error", function () {
-                                Q[i] = convert.call(self, new Buffer("/* "+file+" Req ERROR! */"));
+                                Q[i] = convert.call(self, new Buffer("/* " + file + " Req ERROR! */"));
                                 Log.error(file);
                                 sendData();
                             })
