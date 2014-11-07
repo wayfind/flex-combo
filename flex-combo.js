@@ -15,14 +15,17 @@ var ALProtocol = {
 var Log = (function () {
     return {
         request: function(input) {
-            utilLib.trace("=> ", input);
+            utilLib.info("=> ", input);
         },
         response: function(input) {
-            utilLib.trace("<= ", input);
+            utilLib.done("<= ", input);
             console.log('');
         },
+        error: function(input) {
+            utilLib.error(input);
+        },
         local: function(url, input) {
-            utilLib.logue("[Local]  "+url+" <= ", input)
+            utilLib.logue("[Local]  "+url+" <= ", input);
         },
         cache: function(url, input) {
             utilLib.logue("[Cache]  "+url+" <= ", input);
@@ -229,7 +232,7 @@ FlexCombo.prototype = {
         this.param = utilLib.merge(true, this.param, conf, param||{});
     },
     parser: function(_url) {
-        var url = urlLib.parse(_url).path;
+        var url = urlLib.parse(_url).path.replace(/\\/g, '/').replace(/\?(\w+)=(.+)$/, '');
         var prefix = url.indexOf(this.param.servlet+'?');
 
         if (prefix != -1) {
@@ -275,7 +278,11 @@ FlexCombo.prototype = {
             func: function(htmlfile, url) {
                 var jstpl = require("./engines/jstpl");
                 var content = jstpl.compile.call(this, htmlfile, url);
-                //fsLib.writeFile(htmlfile, convert.call(this, content), function(){});
+                fsLib.writeFile(htmlfile, convert.call(this, content), function(e){
+                    if (e) {
+                        console.log(e);
+                    }
+                });
                 return content;
             }
         }
@@ -291,17 +298,17 @@ FlexCombo.prototype = {
     handle: function(req, res, next) {
         this.config();
 
-        var url = urlLib.parse(req.url).path;
-
         // flex-combo是否要起作用
+        var url = urlLib.parse(req.url).path.replace(/\?(\w+)=(.+)$/, '');
         if (url.match(new RegExp(this.param.supportedFile))) {
             res.writeHead(200, {
                 "Access-Control-Allow-Origin": '*',
-                "Content-Type": mime.lookup(url) + ";charset=" + this.param.charset
+                "Content-Type": mime.lookup(url) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
+                "X-MiddleWare": "flex-combo"
             });
 
             // 获取待处理文件列表
-            var files = this.parser(req.url.replace(/\\/g, '/'));
+            var files = this.parser(req.url);
             Log.request(files);
 
             var Q = new Array(files.length);
@@ -339,7 +346,6 @@ FlexCombo.prototype = {
                 if (reqHost == requestOption.host) {
                     return false;
                 }
-
                 return requestOption;
             }
 
@@ -378,15 +384,12 @@ FlexCombo.prototype = {
                     var requestOption = buildRequestOption.call(self, file);
                     if (requestOption) {
                         ALProtocol[requestOption.protocol]
-                            .on("error", function () {
-                                Q[i] = convert.call(self, new Buffer("/* "+file+" Req ERROR! */"));
-                                sendData();
-                            })
                             .request(requestOption, function (nsres) {
                                 var buffer = [];
                                 nsres
                                     .on("error", function () {
                                         Q[i] = convert.call(self, new Buffer("/* "+file+" Proxy ERROR! */"));
+                                        Log.error(file);
                                         sendData();
                                     })
                                     .on("data", function (chunk) {
@@ -400,10 +403,16 @@ FlexCombo.prototype = {
                                         sendData();
                                     });
                             })
+                            .on("error", function () {
+                                Q[i] = convert.call(self, new Buffer("/* "+file+" Req ERROR! */"));
+                                Log.error(file);
+                                sendData();
+                            })
                             .end();
                     }
                     else {
                         Q[i] = convert.call(self, new Buffer("/* "+file+" Loop! */"));
+                        Log.error(file);
                         sendData();
                     }
                 })(file, i);
