@@ -52,7 +52,7 @@ if(program.forwardPrefix){
 
 var port = program.port || 80;
 
-var flexCombo = require('../compatibility');
+var flexCombo = require('../adapter/compatibility');
 var http = require('http');
 var comboInst = flexCombo(process.cwd(), param.urls, param);
 
