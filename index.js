@@ -1,5 +1,11 @@
+/**
+ * 新版主入口
+ * require("flex-combo")，支持Express风格和Koa风格的中间件集成方式
+ * */
+
+var FlexCombo = require("./api");
+
 module = module.exports = function(param, flag) {
-    var FlexCombo = require("./api");
     var fcInst = new FlexCombo(param, flag);
 
     return function() {

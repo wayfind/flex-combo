@@ -1,3 +1,8 @@
+/**
+ * 二次开发示例，更灵活定义功能
+ * require("flex-combo/api")
+ * */
+
 var http = require("http");
 var FlexCombo = require("flex-combo/api");
 
