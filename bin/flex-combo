@@ -9,7 +9,7 @@ var helpInfo = {
     'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。','Filter'],
     'charset':['http响应数据的编码方式。默认为gbk。', 'Charset'],
     'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','Help'],
-    'port':['flex-combo运行的端口号。默认是80', 'Port'],
+    'port':['flex-combo运行的端口号。默认是80/443', 'Port'],
     'forwardPrefix':['转发的url统一增加前缀', 'Add prefix to url while forwarding to Combo server']
 };
 var LANG = process.env.LANG || 'zh';
@@ -24,7 +24,8 @@ program
     .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
     .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
     .option('-c, --charset [string]', helpInfo.charset[langIndex])
-    .option('-p, --port [string]', helpInfo.port[langIndex])
+    .option('-p, --http_port [string]', helpInfo.port[langIndex])
+    .option('-P, --https_port [string]', helpInfo.port[langIndex])
     .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
     .parse(process.argv);
 
@@ -50,25 +51,62 @@ if(program.forwardPrefix){
     param.forwardPrefix = program.forwardPrefix;
 }
 
-var port = program.port || 80;
+var flexCombo = require('../enhanced');
+var http  = require('http');
+var https = require('https');
+var fs    = require('fs');
+var path  = require('path');
 
-var flexCombo = require('../compatibility');
-var http = require('http');
-var comboInst = flexCombo(process.cwd(), param.urls, param);
+var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
+var dir = path.join(userHome, ".flex-combo");
+
+var comboInst  = flexCombo(param, dir);
+
+var http_port  = program.http_port  || 80;
+var https_port = program.https_port || 443;
 
 http.createServer(function (req, res) {
-    function next(){
+    comboInst = flexCombo(param, dir);
+
+    function next() {
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Your combo file not found.');
     }
 
     try {
+        req.protocol = "http";
         comboInst(req, res, next);
     }
     catch (e) {
         next();
     }
 })
-.listen(port, function() {
-    console.log('Flex Combo Server running at http://127.0.0.1:'+port);
+.listen(http_port, function() {
+    console.log('Flex Combo HTTP Server running at http://127.0.0.1:'+http_port);
+});
+
+https.createServer(
+    {
+       key: fs.readFileSync(__dirname+"/privatekey.pem", "utf-8"),
+       cert:fs.readFileSync(__dirname+"/certificate.pem", "utf-8")
+    },
+    function (req, res) {
+        comboInst = flexCombo(param, dir);
+
+        function next() {
+            res.writeHead(404, {'Content-Type': 'text/plain'});
+            res.end('Your combo file not found.');
+        }
+
+        try {
+            req.protocol = "https";
+            comboInst(req, res, next);
+        }
+        catch (e) {
+            next();
+        }
+    }
+)
+.listen(https_port, function() {
+    console.log('Flex Combo HTTPS Server running at https://127.0.0.1:'+https_port);
 });

@@ -181,7 +181,7 @@ function sassCompiler(xcssfile) {
 /**
  * FlexCombo类
  */
-function FlexCombo(param, flag) {
+function FlexCombo(param, dir) {
     var moduleName = pathLib.basename(__dirname);
 
     this.param = {
@@ -202,11 +202,11 @@ function FlexCombo(param, flag) {
         anonymous: false
     };
 
-    if (flag && (/^\//.test(flag) || /^\w{1}:\\.*$/.test(flag))) {
-        this.confFile = pathLib.join(flag, "config.json");
+    if (dir && (/^\//.test(dir) || /^\w{1}:\\.*$/.test(dir))) {
+        this.confFile = pathLib.join(dir, "config.json");
     }
     else {
-        this.confFile = pathLib.join(process.cwd(), flag||('.'+moduleName), moduleName+".json");
+        this.confFile = pathLib.join(process.cwd(), dir||('.'+moduleName), moduleName+".json");
     }
 
     var confDir = pathLib.dirname(this.confFile);

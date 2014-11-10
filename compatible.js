@@ -1,6 +1,6 @@
 /**
- * 老版本参数兼容入口
- * 通过require("flex-combo/compatibility")，支持原有项目的最小改动升级
+ * 老版本参数兼容入口（主入口）
+ * 通过require("flex-combo")
  * */
 
 var utilLib = require("mace");
@@ -11,17 +11,18 @@ module = module.exports = function(cwd, urls, param) {
     param = utilLib.merge(true, param, {urls:urls});
 
     var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
-    var flag = pathLib.join(userHome, ".flex-combo");
+    var dir = pathLib.join(userHome, ".flex-combo");
 
-    var fcInst = new FlexCombo(param, flag);
+    var fcInst = new FlexCombo(param, dir);
 
     return function(req, res, next) {
-        fcInst = new FlexCombo(param, flag);
+        fcInst = new FlexCombo(param, dir);
+
         try {
             fcInst.handle(req, res, next);
         }
         catch (e) {
             next();
         }
-    }
+    };
 };
