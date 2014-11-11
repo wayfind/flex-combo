@@ -45,44 +45,10 @@ var Log = (function () {
     }
 })();
 
-/* 获取本地文件绝对路径 */
-function getAbsPath(_url) {
-    _url = helper.filteredUrl(_url, this.param.filter);
-
-    // urls中key对应的实际目录
-    var repPath = '';
-    var revPath = _url;
-    var map = this.param.urls;
-    var longestMatchNum = 0;
-    for (k in map) {
-        if (_url.indexOf(k) == 0 && longestMatchNum < k.length) {
-            longestMatchNum = k.length;
-
-            repPath = map[k];
-            revPath = _url.slice(longestMatchNum);
-        }
-    }
-
-    var absPath = '';
-    if (repPath.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(repPath)) {
-        absPath = pathLib.normalize(pathLib.join(repPath, revPath));
-    }
-    else {
-        absPath = pathLib.normalize(pathLib.join(process.cwd(), repPath, revPath));
-    }
-
-    return absPath;
-}
-
-/* 获取文件缓存路径 */
-function getCachePath(_url) {
-    return pathLib.join(this.cacheDir, utilLib.MD5(_url));
-}
-
 /* 是否为二进制文件 */
 function isBinFile(filePath) {
     return !/.js$|.css$|.less$|.scss$|.sass$/.test(filePath);
-};
+}
 
 /* 以配置文件指定编码输出encoded buffer */
 function convert(buff, _url) {
@@ -105,67 +71,6 @@ function convert(buff, _url) {
     );
 }
 
-/* 从本地读取文件（会尝试进行动态编译） */
-function readFromLocal(_url) {
-    var absPath = getAbsPath.call(this, _url);
-    var buff = null;
-
-    // 尝试使用注册的引擎动态编译
-    var matchedIndex = -1;
-    for (var i=this.engines.length-1, matched=null, matchedNum=-1; i>=0; i--) {
-        matched = _url.match(new RegExp(this.engines[i].rule));
-        if (matched && matched[0].length > matchedNum && typeof this.engines[i].func == "function") {
-            matchedNum = matched[0].length;
-            matchedIndex = i;
-        }
-    }
-
-    if (matchedIndex>=0 && this.engines[matchedIndex]) {
-        buff = this.engines[matchedIndex].func.call(this, absPath, _url);
-    }
-
-    // 尝试读取静态文件
-    if (!buff && fsLib.existsSync(absPath)) {
-        buff = fsLib.readFileSync(absPath);
-    }
-
-    if (buff) {
-        Log.local(_url, absPath);
-        if (isBinFile(absPath)) {
-            return buff;
-        }
-        return convert.call(this, buff, _url);
-    }
-
-    return null;
-}
-
-/* 从缓存读取文件 */
-function readFromCache(_url) {
-    var absPath = getCachePath.call(this, _url);
-
-    if (fsLib.existsSync(absPath)) {
-        var buff = fsLib.readFileSync(absPath);
-        Log.cache(_url, absPath);
-        if (isBinFile(absPath)) {
-            return buff;
-        }
-        return convert.call(this, buff, _url);
-    }
-
-    return null;
-}
-
-/* 缓存文件 */
-function cacheFile(_url, buff) {
-    var absPath = getCachePath.call(this, _url);
-    if (/[<>\*\?]+/g.test(absPath)) {
-        return;
-    }
-
-    fsLib.writeFile(absPath, buff);
-}
-
 /* LESS动态编译 */
 function lessCompiler(xcssfile) {
     var less = require("./engines/less");
@@ -184,23 +89,7 @@ function sassCompiler(xcssfile) {
 function FlexCombo(param, dir) {
     var moduleName = pathLib.basename(__dirname);
 
-    this.param = {
-        urls: {},
-        hosts: {"a.tbcdn.cn": "115.238.23.240", "g.tbcdn.cn": "115.238.23.250"},
-        headers: {},
-        servlet: '?',
-        seperator: ',',
-        charset: "utf-8",
-        urlBasedCharset: {},
-        supportedFile: "\\.js$|\\.css$|\\.png$|\\.gif$|\\.jpg$|\\.ico$|\\.swf$|\\.xml$|\\.less$|\\.scss$|\\.svg$|\\.ttf$|\\.eot$|\\.woff$|\\.mp3$",
-        filter: {
-            "\\?.+": '',
-            "-min\\.js$": ".js",
-            "-min\\.css$": ".css"
-        },
-        define: "KISSY.add",
-        anonymous: false
-    };
+    this.param = require("./lib/param");
 
     if (dir && (/^\//.test(dir) || /^\w{1}:\\.*$/.test(dir))) {
         this.confFile = pathLib.join(dir, "config.json");
@@ -279,11 +168,7 @@ FlexCombo.prototype = {
                 var jstpl = require("./engines/jstpl");
                 var content = jstpl.compile.call(this, htmlfile, url);
                 if (content) {
-                    fsLib.writeFile(htmlfile, convert.call(this, content), function(e) {
-                        if (e) {
-                            console.log(e);
-                        }
-                    });
+                    fsLib.writeFile(htmlfile, convert.call(this, content));
                 }
                 return content;
             }
@@ -309,14 +194,25 @@ FlexCombo.prototype = {
                 "X-MiddleWare": "flex-combo"
             });
 
-            // 获取待处理文件列表
+            /* 获取待处理文件列表 */
             var files = this.parser(req.url);
+            var Q = new Array(files.length);
             Log.request(files);
 
-            var Q = new Array(files.length);
-            var self = this;
+            /* 响应输出 */
+            function sendData() {
+                var flag = true;
+                for (var i=0, len=Q.length; i<len; i++) {
+                    flag &= Boolean(Q[i]);
+                }
 
-            // 构建HTTP(s)请求头
+                if (flag) {
+                    res.end(utilLib.joinBuffer(Q));
+                    Log.response(req.url);
+                }
+            }
+
+            /* 构建HTTP(s)请求头 */
             function buildRequestOption(url) {
                 var protocol = (req.protocol || "http")+':';
 
@@ -350,16 +246,124 @@ FlexCombo.prototype = {
                 return requestOption;
             }
 
-            // 最终响应
-            function sendData() {
-                var flag = true;
-                for (var i=0, len=Q.length; i<len; i++) {
-                    flag &= Boolean(Q[i]);
+            /* 从本地读取文件（会尝试进行动态编译） */
+            function readFromLocal(_url) {
+                _url = helper.filteredUrl(_url, this.param.filter);
+
+                // urls中key对应的实际目录
+                var repPath = '';
+                var revPath = _url;
+                var map = this.param.urls;
+                var longestMatchNum = 0;
+                for (k in map) {
+                    if (_url.indexOf(k) == 0 && longestMatchNum < k.length) {
+                        longestMatchNum = k.length;
+
+                        repPath = map[k];
+                        revPath = _url.slice(longestMatchNum);
+                    }
                 }
 
-                if (flag) {
-                    res.end(utilLib.joinBuffer(Q));
-                    Log.response(req.url);
+                var absPath = '';
+                if (repPath.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(repPath)) {
+                    absPath = pathLib.normalize(pathLib.join(repPath, revPath));
+                }
+                else {
+                    absPath = pathLib.normalize(pathLib.join(process.cwd(), repPath, revPath));
+                }
+
+                // 尝试使用注册的引擎动态编译
+                var matchedIndex = -1;
+                for (var i=this.engines.length-1, matched=null, matchedNum=-1; i>=0; i--) {
+                    matched = _url.match(new RegExp(this.engines[i].rule));
+                    if (matched && matched[0].length > matchedNum && typeof this.engines[i].func == "function") {
+                        matchedNum = matched[0].length;
+                        matchedIndex = i;
+                    }
+                }
+
+                var buff = null;
+                if (matchedIndex>=0 && this.engines[matchedIndex]) {
+                    buff = this.engines[matchedIndex].func.call(this, absPath, _url);
+                }
+
+                // 尝试读取静态文件
+                if (!buff && fsLib.existsSync(absPath)) {
+                    buff = fsLib.readFileSync(absPath);
+                }
+
+                if (buff) {
+                    Log.local(_url, absPath);
+                    if (isBinFile(absPath)) {
+                        return buff;
+                    }
+                    return convert.call(this, buff, _url);
+                }
+
+                return null;
+            }
+
+            /* 从缓存读取文件 */
+            function readFromCache(_url) {
+                var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
+                if (fsLib.existsSync(absPath)) {
+                    var buff = fsLib.readFileSync(absPath);
+                    Log.cache(_url, absPath);
+                    if (isBinFile(absPath)) {
+                        return buff;
+                    }
+                    return convert.call(this, buff, _url);
+                }
+
+                return null;
+            }
+
+            /* 缓存文件 */
+            function cacheFile(_url, buff) {
+                var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
+                if (/[<>\*\?]+/g.test(absPath)) {
+                    return;
+                }
+
+                fsLib.writeFile(absPath, buff);
+            }
+
+            /* 从线上获取资源 */
+            function fetchOnline(file, i) {
+                var self = this;
+                var requestOption = buildRequestOption.call(self, file);
+                if (requestOption) {
+                    ALProtocol[requestOption.protocol]
+                        .request(requestOption, function (nsres) {
+                            var buffer = [];
+                            nsres
+                                .on("error", function () {
+                                    Q[i] = convert.call(self, new Buffer("/* " + file + " Proxy ERROR! */"));
+                                    Log.error(file);
+                                    sendData();
+                                })
+                                .on("data", function (chunk) {
+                                    buffer.push(chunk);
+                                })
+                                .on("end", function () {
+                                    var content = utilLib.joinBuffer(buffer);
+                                    Q[i] = content;
+                                    cacheFile.call(self, file, content);
+                                    Log.remote(file, requestOption);
+                                    sendData();
+                                });
+                        })
+                        .on("error", function () {
+                            Q[i] = convert.call(self, new Buffer("/* " + file + " Req ERROR! */"));
+                            Log.error(file);
+                            sendData();
+                        })
+                        .end();
+                }
+                else {
+                    Q[i] = convert.call(self, new Buffer("/* "+file+" Loop! */"));
+                    Log.error(file);
+                    sendData();
                 }
             }
 
@@ -367,57 +371,23 @@ FlexCombo.prototype = {
                 var file = files[i];
 
                 // 读本地最新文件内容
-                var localContent = readFromLocal.call(self, file);
+                var localContent = readFromLocal.call(this, file);
                 if (localContent) {
                     Q[i] = localContent;
                     continue;
                 }
 
                 // 读本地缓存内容
-                var cacheContent = readFromCache.call(self, file);
+                var cacheContent = readFromCache.call(this, file);
                 if (cacheContent) {
                     Q[i] = cacheContent;
                     continue;
                 }
 
                 // 读线上内容并缓存
-                (function (file, i) {
-                    var requestOption = buildRequestOption.call(self, file);
-                    if (requestOption) {
-                        ALProtocol[requestOption.protocol]
-                            .request(requestOption, function (nsres) {
-                                var buffer = [];
-                                nsres
-                                    .on("error", function () {
-                                        Q[i] = convert.call(self, new Buffer("/* " + file + " Proxy ERROR! */"));
-                                        Log.error(file);
-                                        sendData();
-                                    })
-                                    .on("data", function (chunk) {
-                                        buffer.push(chunk);
-                                    })
-                                    .on("end", function () {
-                                        var content = utilLib.joinBuffer(buffer);
-                                        cacheFile.call(self, file, content);
-                                        Q[i] = convert.call(self, content, file);
-                                        Log.remote(file, requestOption);
-                                        sendData();
-                                    });
-                            })
-                            .on("error", function () {
-                                Q[i] = convert.call(self, new Buffer("/* " + file + " Req ERROR! */"));
-                                Log.error(file);
-                                sendData();
-                            })
-                            .end();
-                    }
-                    else {
-                        Q[i] = convert.call(self, new Buffer("/* "+file+" Loop! */"));
-                        Log.error(file);
-                        sendData();
-                    }
-                })(file, i);
+                fetchOnline.call(this, file, i);
             }
+
             sendData();
         }
         else if (typeof next == "function") {
@@ -429,4 +399,4 @@ FlexCombo.prototype = {
     }
 };
 
-module = module.exports = FlexCombo;
+exports = module.exports = FlexCombo;

@@ -51,7 +51,7 @@ if(program.forwardPrefix){
     param.forwardPrefix = program.forwardPrefix;
 }
 
-var flexCombo = require('../enhanced');
+var flexCombo = require('../index').enhanced;
 var http  = require('http');
 var https = require('https');
 var fs    = require('fs');

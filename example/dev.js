@@ -12,7 +12,7 @@ var fcInst = new FlexCombo();
 fcInst.defineParser(function(url) {
     return [];
 });
-// 添加assets动态编译规则
+// 添加assets动态编译引擎
 fcInst.addEngine("\\.suffix$", function(absPath, url) {
     return "";
 });
