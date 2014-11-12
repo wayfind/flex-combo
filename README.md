@@ -82,14 +82,14 @@ sudo flex-combo
 
   Options 如下:
 
-    -d, --dir [string]        本地目录。默认情况下是执行命令的当前目录。
-    -u, --url [string]        本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。
-    -H, --host [string]       服务器域名。如果文件不在本地，将到此域名处请求文件。
-    -s, --servlet [string]    Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"
-    -e, --seperator [string]  文件分隔符。默认为","
-    -c, --charset [string]    http响应数据的编码方式。默认为gbk。
-    -p, --http_port [string]        启动HTTP服务的端口
-    -P, --https_port [string]       启动HTTPS服务的端口
+    -d, --dir [string]        本地目录，默认为执行命令的当前目录
+    -u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
+    -H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
+    -s, --servlet [string]    Combo的servlet，对于淘宝而言是"?",对yahoo而言是"combo"，默认是"?"
+    -e, --seperator [string]  文件分隔符，默认为","
+    -c, --charset [string]    http响应数据的编码方式，默认为utf-8
+    -p, --http_port [int]        启动HTTP服务的端口，默认为80
+    -P, --https_port [int]       启动HTTPS服务的端口，默认为443
 
 在项目目录下执行`flex-combo`而不带任何参数时，将以项目目录为根目录建立Combo服务器。
 
@@ -111,7 +111,7 @@ sudo flex-combo
     "host": "assets.taobaocdn.com",
     "servlet": "?",
     "seperator": ",",
-    "charset": "gbk",
+    "charset": "utf-8",
     "filter": {
         "\\?.+": "",
         "-min\\.js$": ".js",
@@ -198,7 +198,7 @@ flex-combo支持请求资源不在本地在时去某个服务器请求所需资�
 `supportedFile`可以定义支持的文件扩展名列表。
 
 ## lib开发模式
-通过`require("flex-combo/api")`，引入`Flex Combo`的API，其暴露出一个类Class，作用前`new`一个FlexCombo对象实例。
+通过`require("flex-combo/api")`，引入`Flex Combo`的API，其暴露出对象Class，`new`操作创建FlexCombo实例。
 
 * 通过`defineParser`方法自定义URL解析规则
 输入参数为URL字符串，通过自定义逻辑的处理，最终输出一个映射地址数组，供接下来获取具体内容。
