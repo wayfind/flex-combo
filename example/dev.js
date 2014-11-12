@@ -12,8 +12,10 @@ var fcInst = new FlexCombo();
 fcInst.defineParser(function(url) {
     return [];
 });
+
 // 添加assets动态编译引擎
-fcInst.addEngine("\\.suffix$", function(absPath, url) {
+// 例如要加入stylus支持，首先要在配置文件supportedFile中加入相应后缀匹配\\.styl$，然后通过addEngine添加动态编译逻辑
+fcInst.addEngine("\\.styl$", function(absPath, url) {
     return "";
 });
 
