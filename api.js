@@ -324,11 +324,9 @@ FlexCombo.prototype = {
             /* 缓存文件 */
             function cacheFile(_url, buff) {
                 var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
-                if (/[<>\*\?]+/g.test(absPath)) {
-                    return;
+                if (!/[<>\*\?]+/g.test(absPath)) {
+                    fsLib.writeFile(absPath, buff);
                 }
-
-                fsLib.writeFile(absPath, buff);
             }
 
             /* 从线上获取资源 */
