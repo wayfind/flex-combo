@@ -13,22 +13,25 @@ var ALProtocol = {
 };
 
 var Log = (function () {
+    function typing(type, url, input) {
+        utilLib.logue("[%s] %s <= "+input, type, url);
+    }
+
     return {
         request: function(input) {
-            utilLib.info("=> ", input);
+            utilLib.info("=> %a", input);
         },
         response: function(input) {
-            utilLib.done("<= ", input);
-            console.log('');
+            utilLib.done("<= %s\n", input);
         },
         error: function(input) {
             utilLib.error(input);
         },
         local: function(url, input) {
-            utilLib.logue("[Local]  "+url+" <= ", input);
+            typing("Local", url, input);
         },
         cache: function(url, input) {
-            utilLib.logue("[Cache]  "+url+" <= ", input);
+            typing("Cache", url, input);
         },
         remote: function(url, opt) {
             opt = utilLib.merge(true, {
@@ -40,7 +43,7 @@ var Log = (function () {
                     host: "localhost"
                 }
             }, opt);
-            utilLib.logue("[Remote] "+url+" <= ", opt.protocol+"//"+opt.headers.host+':'+opt.port+opt.path+" (IP:"+opt.host+')');
+            typing("Remote", url, opt.protocol+"//"+opt.headers.host+':'+opt.port+opt.path+" (IP:"+opt.host+')');
         }
     }
 })();

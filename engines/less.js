@@ -1,9 +1,13 @@
 var helper  = require("../lib/util");
 var pathLib = require("path");
 var less    = require("less");
+var utilLib = require("mace")(module);
 
 function Loader() {
     this.TREE = {};
+
+    this.vars = [];
+    this.func = [];
 }
 Loader.prototype = {
     constructor: Loader,
@@ -28,6 +32,26 @@ Loader.prototype = {
 
         var self = this;
         var lesstxt = helper.getUnicode(xcssfile);
+
+        lesstxt.replace(/^\s{0,}@(.+)\:|^\s{0,}\.(.+)\s{0,}\(.{0,}\)\s{0,}\{[\s\S]*?\}/g, function($0, $1, $2) {
+            if ($1) {
+                if (self.vars.indexOf($1) == -1) {
+                    self.vars.push($1);
+                }
+                else {
+                    utilLib.warn("variable %s is defined!", $1);
+                }
+            }
+            if ($2) {
+                if (self.func.indexOf($2) == -1) {
+                    self.func.push($2);
+                }
+                else {
+                    utilLib.warn("function %s is defined!", $2);
+                }
+            }
+        });
+
         lesstxt = lesstxt.replace(/@import\s+(["'])(\S+?)\1;?/mg, function(t, f, relpath) {
             var filepath = pathLib.join(pathLib.dirname(xcssfile), relpath);
             if (!/\.[a-z]{1,}$/i.test(filepath)) {
