@@ -138,7 +138,7 @@ FlexCombo.prototype = {
     },
     defineParser: function(func) {
         if (typeof func == "function") {
-            this.parser = func;
+            FlexCombo.prototype.parser = func;
         }
     },
     engines: [

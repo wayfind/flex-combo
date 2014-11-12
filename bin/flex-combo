@@ -66,8 +66,6 @@ var http_port  = program.http_port  || 80;
 var https_port = program.https_port || 443;
 
 http.createServer(function (req, res) {
-    comboInst = flexCombo(param, dir);
-
     function next() {
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Your combo file not found.');
@@ -91,8 +89,6 @@ https.createServer(
        cert:fs.readFileSync(__dirname+"/certificate.pem", "utf-8")
     },
     function (req, res) {
-        comboInst = flexCombo(param, dir);
-
         function next() {
             res.writeHead(404, {'Content-Type': 'text/plain'});
             res.end('Your combo file not found.');
