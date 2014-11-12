@@ -4,8 +4,8 @@ var fsLib   = require("fs");
 var mime    = require("mime");
 var isUtf8  = require("is-utf8");
 var iconv   = require("iconv-lite");
-var helper  = require("./lib/util");
 var utilLib = require("mace")(module);
+var helper  = require("./lib/util");
 
 var ALProtocol = {
     "http:":  require("http"),
@@ -391,11 +391,8 @@ FlexCombo.prototype = {
 
             sendData();
         }
-        else if (typeof next == "function") {
-            next();
-        }
         else {
-            console.log("Done");
+            next();
         }
     }
 };
