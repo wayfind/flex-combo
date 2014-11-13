@@ -124,7 +124,7 @@ FlexCombo.prototype = {
         this.param = utilLib.merge(true, this.param, conf, param||{});
     },
     parser: function(_url) {
-        var url = urlLib.parse(_url).path.replace(/\\/g, '/');
+        var url = urlLib.parse(_url).path.replace(/\\|\/{1,}/g, '/');
         var prefix = url.indexOf(this.param.servlet+'?');
 
         if (prefix != -1) {
@@ -132,11 +132,11 @@ FlexCombo.prototype = {
             var file = url.slice(prefix + this.param.servlet.length+1);
             var filelist = file.split(this.param.seperator, 1000);
             return filelist.map(function(i) {
-                return (base+i).replace(/\/{1,}/, '/');
+                return pathLib.join(base, i);
             });
         }
         else {
-            return [url.replace(/\/{1,}/, '/')];
+            return [url];
         }
     },
     defineParser: function(func) {
