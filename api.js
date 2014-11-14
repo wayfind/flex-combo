@@ -220,7 +220,7 @@ FlexCombo.prototype = {
                 var protocol = (req.protocol || "http")+':';
 
                 var H = req.headers.host.split(':');
-                var reqHostIP   = H[0];
+                var reqHostIP   = this.param.hostIp || H[0];
                 var reqHostName = H[0];
                 var reqPort = H[1] || (protocol=="https:" ? 443 : 80);
 
@@ -235,7 +235,7 @@ FlexCombo.prototype = {
 
                 var requestOption = {
                     protocol: protocol,
-                    host: this.param.hostIp || reqHostIP,
+                    host: reqHostIP,
                     port: reqPort,
                     path: url,
                     method: req.method || "GET",
