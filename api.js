@@ -110,7 +110,8 @@ function FlexCombo(param, dir) {
         fsLib.writeFileSync(this.confFile, JSON.stringify(this.param, null, 4), {encoding:"utf-8"});
     }
 
-    this.param = utilLib.merge(true, this.param, param||{});
+    var conf = JSON.parse(fsLib.readFileSync(this.confFile));
+    this.param = utilLib.merge(true, this.param, conf, param||{});
 
     this.cacheDir = pathLib.join(confDir, "cache");
     if (!fsLib.existsSync(this.cacheDir)) {
@@ -120,8 +121,7 @@ function FlexCombo(param, dir) {
 FlexCombo.prototype = {
     constructor: FlexCombo,
     config: function(param) {
-        var conf = JSON.parse(fsLib.readFileSync(this.confFile));
-        this.param = utilLib.merge(true, this.param, conf, param||{});
+        this.param = utilLib.merge(true, this.param, param||{});
     },
     parser: function(_url) {
         var url = urlLib.parse(_url).path.replace(/\\|\/{1,}/g, '/');
