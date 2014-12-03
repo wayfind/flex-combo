@@ -58,7 +58,7 @@ function convert(buff, _url) {
     buff = new Buffer(buff);
 
     var charset = isUtf8(buff) ? "utf-8" : "gbk";
-    var outputCharset = this.param.charset;
+    var outputCharset = (this.param.charset).toLowerCase();
 
     if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
         outputCharset = this.param.urlBasedCharset[_url];
@@ -186,8 +186,6 @@ FlexCombo.prototype = {
         }
     },
     handle: function(req, res, next) {
-        this.config();
-
         // flex-combo是否要起作用
         var url = urlLib.parse(req.url).path.replace(/\?(\w+)=(.+)$/, '');
         if (url.match(new RegExp(this.param.supportedFile))) {
