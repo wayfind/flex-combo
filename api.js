@@ -132,7 +132,7 @@ FlexCombo.prototype = {
             var file = url.slice(prefix + this.param.servlet.length+1);
             var filelist = file.split(this.param.seperator, 1000);
             return filelist.map(function(i) {
-                return pathLib.join(base, i);
+                return pathLib.join(base, i).replace(/\\|\/{1,}/g, '/');
             });
         }
         else {
