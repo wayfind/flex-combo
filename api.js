@@ -14,7 +14,7 @@ var ALProtocol = {
 
 var Log = (function () {
     function typing(type, url, input) {
-        utilLib.logue("[%s] %s <= "+input, type, url);
+        utilLib.logue("%s "+url+" %s %s", '['+type+']', "<=", input);
     }
 
     return {
@@ -24,11 +24,17 @@ var Log = (function () {
         response: function(input) {
             utilLib.done("<= %s\n", input);
         },
+        warn: function(input, reason) {
+            utilLib.logue("%s "+input+" %s", "[Warn]", reason||"Exception");
+        },
         error: function(input) {
             utilLib.error(input);
         },
         local: function(url, input) {
             typing("Local", url, input);
+        },
+        engine: function(url, input) {
+            typing("Engine", url, input);
         },
         cache: function(url, input) {
             typing("Cache", url, input);
@@ -285,16 +291,29 @@ FlexCombo.prototype = {
 
                 var buff = null;
                 if (matchedIndex>=0 && this.engines[matchedIndex]) {
-                    buff = this.engines[matchedIndex].func.call(this, absPath, _url);
+                    var engine = this.engines[matchedIndex];
+                    buff = engine.func.call(this, absPath, _url);
+                    if (buff) {
+                        var suffix = engine.rule.replace(/^\\./, '').split("\\.");
+                        Log.engine(_url, absPath.replace(new RegExp(engine.rule), '.'+(suffix[0]||"unknown")));
+                    }
+                    else {
+                        Log.warn(absPath, "Engine Fail! TRY TO FIND Local");
+                    }
                 }
 
                 // 尝试读取静态文件
-                if (!buff && fsLib.existsSync(absPath)) {
-                    buff = fsLib.readFileSync(absPath);
+                if (!buff) {
+                    if (fsLib.existsSync(absPath)) {
+                        Log.local(_url, absPath);
+                        buff = fsLib.readFileSync(absPath);
+                    }
+                    else {
+                        Log.warn(absPath, "Not Found! TRY TO FIND Cache");
+                    }
                 }
 
                 if (buff) {
-                    Log.local(_url, absPath);
                     if (isBinFile(absPath)) {
                         return buff;
                     }
@@ -314,6 +333,9 @@ FlexCombo.prototype = {
                         return buff;
                     }
                     return convert.call(this, buff, _url);
+                }
+                else {
+                    Log.warn(absPath, "Not Found! TRY TO FIND Remote");
                 }
 
                 return null;
