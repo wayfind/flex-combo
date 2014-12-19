@@ -138,7 +138,7 @@ FlexCombo.prototype = {
             var file = url.slice(prefix + this.param.servlet.length+1);
             var filelist = file.split(this.param.seperator, 1000);
             return filelist.map(function(i) {
-                return pathLib.join(base, i);
+                return pathLib.join(base, i).replace(/\\|\/{1,}/g, '/');
             });
         }
         else {
@@ -255,7 +255,7 @@ FlexCombo.prototype = {
 
             /* 从本地读取文件（会尝试进行动态编译） */
             function readFromLocal(_url) {
-                _url = helper.filteredUrl(_url, this.param.filter);
+                _url = helper.filteredUrl(_url, this.param.filter, this.param.debug);
 
                 // urls中key对应的实际目录
                 var repPath = '';
@@ -295,10 +295,10 @@ FlexCombo.prototype = {
                     buff = engine.func.call(this, absPath, _url);
                     if (buff) {
                         var suffix = engine.rule.replace(/^\\./, '').split("\\.");
-                        Log.engine(_url, absPath.replace(new RegExp(engine.rule), '.'+(suffix[0]||"unknown")));
+                        this.param.debug && Log.engine(_url, absPath.replace(new RegExp(engine.rule), '.'+(suffix[0]||"unknown")));
                     }
                     else {
-                        Log.warn(absPath, "Engine Fail! TRY TO FIND Local");
+                        this.param.debug && Log.warn(absPath, "Engine Fail! TRY TO FIND Local");
                     }
                 }
 
@@ -309,7 +309,7 @@ FlexCombo.prototype = {
                         buff = fsLib.readFileSync(absPath);
                     }
                     else {
-                        Log.warn(absPath, "Not Found! TRY TO FIND Cache");
+                        this.param.debug && Log.warn(absPath, "Not Found! TRY TO FIND Cache");
                     }
                 }
 
@@ -328,14 +328,14 @@ FlexCombo.prototype = {
                 var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
                 if (fsLib.existsSync(absPath)) {
                     var buff = fsLib.readFileSync(absPath);
-                    Log.cache(_url, absPath);
+                    this.param.debug && Log.cache(_url, absPath);
                     if (isBinFile(absPath)) {
                         return buff;
                     }
                     return convert.call(this, buff, _url);
                 }
                 else {
-                    Log.warn(absPath, "Not Found! TRY TO FIND Remote");
+                    this.param.debug && Log.warn(absPath, "Not Found! TRY TO FIND Remote");
                 }
 
                 return null;
