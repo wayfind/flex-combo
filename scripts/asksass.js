@@ -7,7 +7,7 @@ var rl = readline.createInterface({
   output: process.stdout
 });
 
-rl.question("Do you want to install node-sass? [y/N]", function(answer) {
+rl.question(" - Do you want to install node-sass? [y/N]", function(answer) {
   if (answer.toLowerCase() == 'y') {
     console.log("node-sass is installing");
 

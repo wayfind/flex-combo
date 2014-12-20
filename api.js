@@ -89,12 +89,7 @@ function lessCompiler(xcssfile) {
 /* SASS动态编译 */
 function sassCompiler(xcssfile) {
   var sass = require("./engines/sass");
-  try {
-    return sass.compile.call(this, xcssfile);
-  }
-  catch (e) {
-    return "/* SASS Module ERROR */";
-  }
+  return sass.compile.call(this, xcssfile);
 }
 
 /**

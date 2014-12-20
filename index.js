@@ -13,7 +13,7 @@ exports = module.exports = function (cwd, urls, param) {
   var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
   var dir = pathLib.join(userHome, ".flex-combo");
 
-  var fcInst = new FlexCombo(param, dir);
+  var fcInst;
 
   return function (req, res, next) {
     fcInst = new FlexCombo(param, dir);
@@ -28,7 +28,7 @@ exports = module.exports = function (cwd, urls, param) {
 };
 
 exports.enhanced = function (param, dir) {
-  var fcInst = new FlexCombo(param, dir);
+  var fcInst;
 
   return function () {
     fcInst = new FlexCombo(param, dir);
