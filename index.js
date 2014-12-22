@@ -2,32 +2,15 @@
  * 主入口
  * 通过require("flex-combo")
  * */
-
-var utilLib = require("mace");
-var pathLib = require("path");
 var FlexCombo = require("./api");
+var pathLib = require("path");
 
-exports = module.exports = function (cwd, urls, param) {
-  param = utilLib.merge(true, param, {urls: urls});
+function enhanced(param, dir) {
+  if (!dir) {
+    var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容Windows
+    dir = pathLib.join(userHome, ".flex-combo");
+  }
 
-  var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
-  var dir = pathLib.join(userHome, ".flex-combo");
-
-  var fcInst;
-
-  return function (req, res, next) {
-    fcInst = new FlexCombo(param, dir);
-
-    try {
-      fcInst.handle(req, res, next);
-    }
-    catch (e) {
-      next();
-    }
-  };
-};
-
-exports.enhanced = function (param, dir) {
   var fcInst;
 
   return function () {
@@ -64,3 +47,7 @@ exports.enhanced = function (param, dir) {
     }
   }
 };
+
+exports = module.exports = enhanced;
+// 以下为了兼容0.6.x版本
+exports.enhanced = enhanced;

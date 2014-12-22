@@ -100,7 +100,7 @@ function FlexCombo(param, dir) {
 
   this.param = require("./lib/param");
 
-  if (dir && (/^\//.test(dir) || /^\w{1}:\\.*$/.test(dir))) {
+  if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
     this.confFile = pathLib.join(dir, "config.json");
   }
   else {
