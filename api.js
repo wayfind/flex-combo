@@ -13,6 +13,37 @@ var ALProtocol = {
 };
 
 var Log = (function () {
+  var colors = {
+    bold: [ 1, 22 ],
+    italic: [ 3, 23 ],
+    underline: [ 4, 24 ],
+    inverse: [ 7, 27 ],
+    white: [ 37, 39 ],
+    grey: [ 89, 39 ],
+    black: [ 30, 39 ],
+    blue: [ 34, 39 ],
+    cyan: [ 36, 39 ],
+    green: [ 32, 39 ],
+    magenta: [ 35, 39 ],
+    red: [ 31, 39 ],
+    yellow: [ 33, 39 ]
+  };
+
+  function colorFull (color, str, style, wrap) {
+    var prefix = '\x1B[';
+
+    return [
+      wrap ? '·'+new Array(10-str.length).join(' ') : '',
+      style ? (prefix + style[0] + 'm') : '',
+      prefix, color[0], 'm',
+
+      str,
+      prefix, color[1], 'm',
+      style ? (prefix + style[1] + 'm') : '',
+      wrap ? ' ' : ''
+    ].join('');
+  }
+
   function typing(type, url, input) {
     utilLib.logue("%s " + url + " %s %s", '[' + type + ']', "<=", input);
   }
@@ -28,7 +59,7 @@ var Log = (function () {
       utilLib.logue("%s " + input + " %s", "[Warn]", reason || "Exception");
     },
     error: function (input) {
-      utilLib.error(input);
+      utilLib.logue("%s %s", colorFull(colors.red, "[Error]", colors.inverse), colorFull(colors.red, input));
     },
     local: function (url, input) {
       typing("Local", url, input);
@@ -207,7 +238,7 @@ FlexCombo.prototype = {
       Log.request(files);
 
       /* 响应输出 */
-      function sendData() {
+      function sendData(F) {
         var flag = true;
         for (var i = 0, len = Q.length; i < len; i++) {
           flag &= Boolean(Q[i]);
@@ -215,7 +246,7 @@ FlexCombo.prototype = {
 
         if (flag) {
           res.end(utilLib.joinBuffer(Q));
-          Log.response(req.url);
+          !F && Log.response(req.url);
         }
       }
 
@@ -224,17 +255,18 @@ FlexCombo.prototype = {
         var protocol = (req.protocol || "http") + ':';
 
         var H = req.headers.host.split(':');
-        var reqHostIP = this.param.hostIp || H[0];
-        var reqHostName = H[0];
         var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
 
-        if (this.param.hosts) {
-          for (hostName in this.param.hosts) {
-            if (reqHostName == hostName) {
-              reqHostIP = this.param.hosts[hostName];
-              break;
-            }
-          }
+        var reqHostName = H[0];
+        var reqHostIP;
+        if (this.param.hostIp) {
+          reqHostIP = this.param.hostIp;
+        }
+        else if (this.param.hosts && this.param.hosts[reqHostName]) {
+          reqHostIP = this.param.hosts[reqHostName];
+        }
+        else {
+          reqHostIP = reqHostName;
         }
 
         var requestOption = {
@@ -377,6 +409,7 @@ FlexCombo.prototype = {
             .on("error", function () {
               Q[i] = convert.call(self, new Buffer("/* " + file + " Req ERROR! */"));
               Log.error(file);
+
               sendData();
             })
             .end();
@@ -388,6 +421,7 @@ FlexCombo.prototype = {
         }
       }
 
+      var F = false;
       for (var i = 0, len = files.length; i < len; i++) {
         var file = files[i];
 
@@ -405,11 +439,12 @@ FlexCombo.prototype = {
           continue;
         }
 
+        F = true;
         // 读线上内容并缓存
         fetchOnline.call(this, file, i);
       }
 
-      sendData();
+      sendData(F);
     }
     else {
       next();
