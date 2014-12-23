@@ -238,10 +238,9 @@ FlexCombo.prototype = {
     }
 
     if (url.match(new RegExp(suffix.join('|')))) {
-      var url4mime = (helper.filteredUrl(url, this.param.filter, false)||'').replace(/\.[a-z]?(htm[l]?$)/, ".$1");
       res.writeHead(200, {
         "Access-Control-Allow-Origin": '*',
-        "Content-Type": mime.lookup(url4mime) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
+        "Content-Type": mime.lookup(url) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
         "X-MiddleWare": "flex-combo"
       });
 
