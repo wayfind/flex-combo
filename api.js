@@ -223,17 +223,30 @@ FlexCombo.prototype = {
     }
   },
   handle: function (req, res, next) {
-    // flex-combo是否要起作用
-    var url = urlLib.parse(req.url).path.replace(/\?(\w+)=(.+)$/, '');
-    if (url.match(new RegExp(this.param.supportedFile))) {
+    var urlObj = urlLib.parse(req.url);
+    var url = urlObj.pathname || urlObj.path.replace(/\?(\w+)=(.+)$/, '');
+
+    var suffix = ["\\.phtml$","\\.js$","\\.css$","\\.png$","\\.gif$","\\.jpg$","\\.jpeg$","\\.ico$","\\.swf$","\\.xml$","\\.less$","\\.scss$","\\.svg$","\\.ttf$","\\.eot$","\\.woff$","\\.mp3$"];
+    if (this.param.supportedFile) {
+      suffix = this.param.supportedFile.split('|');
+    }
+
+    if (this.param.filter) {
+      for (var k in this.param.filter) {
+        suffix.push(k);
+      }
+    }
+
+    if (url.match(new RegExp(suffix.join('|')))) {
+      var url4mime = (helper.filteredUrl(url, this.param.filter, false)||'').replace(/\.[a-z]?(htm[l]?$)/, ".$1");
       res.writeHead(200, {
         "Access-Control-Allow-Origin": '*',
-        "Content-Type": mime.lookup(url) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
+        "Content-Type": mime.lookup(url4mime) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
         "X-MiddleWare": "flex-combo"
       });
 
       /* 获取待处理文件列表 */
-      var files = this.parser(req.url);
+      var files = this.parser(url);
       var Q = new Array(files.length);
       Log.request(files);
 
