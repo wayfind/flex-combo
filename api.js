@@ -49,8 +49,8 @@ var Log = (function () {
   }
 
   return {
-    request: function (input) {
-      utilLib.info("=> %a", input);
+    request: function (host, files) {
+      utilLib.info("=> %s %o", host, files);
     },
     response: function (input) {
       utilLib.done("<= %s\n", input);
@@ -114,13 +114,13 @@ function convert(buff, _url) {
 /* LESS动态编译 */
 function lessCompiler(xcssfile) {
   var less = require("./engines/less");
-  return less.compile.call(this, xcssfile);
+  return less.call(this, xcssfile);
 }
 
 /* SASS动态编译 */
 function sassCompiler(xcssfile) {
   var sass = require("./engines/sass");
-  return sass.compile.call(this, xcssfile);
+  return sass.call(this, xcssfile);
 }
 
 /**
@@ -128,8 +128,6 @@ function sassCompiler(xcssfile) {
  */
 function FlexCombo(param, dir) {
   var moduleName = pathLib.basename(__dirname);
-
-  this.param = require("./lib/param");
 
   if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
     this.confFile = pathLib.join(dir, "config.json");
@@ -143,7 +141,11 @@ function FlexCombo(param, dir) {
     utilLib.mkdirPSync(confDir);
   }
 
-  if (!fsLib.existsSync(this.confFile)) {
+  if (fsLib.existsSync(this.confFile)) {
+    this.param = {};
+  }
+  else {
+    this.param = require("./lib/param");
     fsLib.writeFileSync(this.confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
   }
 
@@ -206,7 +208,7 @@ FlexCombo.prototype = {
       rule: "\\.html\\.js$",
       func: function (htmlfile, url) {
         var jstpl = require("./engines/jstpl");
-        var content = jstpl.compile.call(this, htmlfile, url);
+        var content = jstpl.call(this, htmlfile, url);
         if (content) {
           fsLib.writeFile(htmlfile, convert.call(this, content));
         }
@@ -223,8 +225,10 @@ FlexCombo.prototype = {
     }
   },
   handle: function (req, res, next) {
-    var urlObj = urlLib.parse(req.url);
-    var url = urlObj.pathname || urlObj.path.replace(/\?(\w+)=(.+)$/, '');
+    var HOST = req.protocol + "://" + (req.hostname||req.host||req.headers.host);
+
+    // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
+    var URL = urlLib.parse(req.url).path.replace(/(.*)\?[^\?.]+$/, "$1");
 
     var suffix = ["\\.phtml$","\\.js$","\\.css$","\\.png$","\\.gif$","\\.jpg$","\\.jpeg$","\\.ico$","\\.swf$","\\.xml$","\\.less$","\\.scss$","\\.svg$","\\.ttf$","\\.eot$","\\.woff$","\\.mp3$"];
     if (this.param.supportedFile) {
@@ -237,17 +241,29 @@ FlexCombo.prototype = {
       }
     }
 
-    if (url.match(new RegExp(suffix.join('|')))) {
+    var engines = this.param.engine;
+    if (engines) {
+      for (var k in engines) {
+        suffix.push(k);
+        if (URL.match(new RegExp(k))) {
+          this.param.urls[pathLib.dirname(URL)] = pathLib.dirname(engines[k]);
+        }
+        this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])))
+      }
+    }
+
+    if (URL.match(new RegExp(suffix.join('|')))) {
       res.writeHead(200, {
         "Access-Control-Allow-Origin": '*',
-        "Content-Type": mime.lookup(url) + (isBinFile(url) ? '' : ";charset=" + this.param.charset),
+        "Content-Type": mime.lookup(URL) + (isBinFile(URL) ? '' : ";charset=" + this.param.charset),
         "X-MiddleWare": "flex-combo"
       });
 
       /* 获取待处理文件列表 */
-      var files = this.parser(url);
-      var Q = new Array(files.length);
-      Log.request(files);
+      var files = this.parser(URL);
+      var FLen = files.length;
+      var Q = new Array(FLen);
+      Log.request(HOST, files);
 
       /* 响应输出 */
       function sendData(F) {
@@ -258,7 +274,7 @@ FlexCombo.prototype = {
 
         if (flag) {
           res.end(utilLib.joinBuffer(Q));
-          !F && Log.response(req.url);
+          !F && Log.response(HOST+req.url);
         }
       }
 
@@ -359,7 +375,7 @@ FlexCombo.prototype = {
 
         if (buff) {
           if (isBinFile(absPath)) {
-            return buff;
+            return (typeof buff == "object" && Buffer.isBuffer(buff)) ? buff : new Buffer(buff);
           }
           return convert.call(this, buff, _url);
         }
@@ -369,7 +385,7 @@ FlexCombo.prototype = {
 
       /* 从缓存读取文件 */
       function readFromCache(_url) {
-        var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
+        var absPath = pathLib.join(this.cacheDir, utilLib.MD5(pathLib.join(HOST, _url)));
         if (fsLib.existsSync(absPath)) {
           var buff = fsLib.readFileSync(absPath);
           this.param.debug && Log.cache(_url, absPath);
@@ -387,7 +403,7 @@ FlexCombo.prototype = {
 
       /* 缓存文件 */
       function cacheFile(_url, buff) {
-        var absPath = pathLib.join(this.cacheDir, utilLib.MD5(_url));
+        var absPath = pathLib.join(this.cacheDir, utilLib.MD5(pathLib.join(HOST, _url)));
         if (!/[<>\*\?]+/g.test(absPath)) {
           fsLib.writeFile(absPath, buff);
         }
@@ -434,7 +450,7 @@ FlexCombo.prototype = {
       }
 
       var F = false;
-      for (var i = 0, len = files.length; i < len; i++) {
+      for (var i = 0; i < FLen; i++) {
         var file = files[i];
 
         // 读本地最新文件内容

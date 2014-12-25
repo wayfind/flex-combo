@@ -2,7 +2,7 @@ var helper = require("../lib/util");
 
 try {
   var sass = require("node-sass");
-  exports.compile = function(xcssfile) {
+  module.exports = function(xcssfile) {
     var sasstxt = helper.getUnicode(xcssfile);
     if (sasstxt) {
       return sass.renderSync({
@@ -14,7 +14,7 @@ try {
   };
 }
 catch(e) {
-  exports.compile = function(xcssfile) {
+  module.exports = function(xcssfile) {
     return "/* node-sass isn't installed\n *"+xcssfile+" ERROR!\n */";
   };
 }

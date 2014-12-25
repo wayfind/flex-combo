@@ -70,7 +70,7 @@ Loader.prototype = {
   }
 };
 
-exports.compile = function (xcssfile) {
+module.exports = function (xcssfile) {
   var loader = new Loader();
   var lesstxt = loader.fetch(xcssfile);
   if (lesstxt) {

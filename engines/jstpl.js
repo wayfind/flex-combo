@@ -31,7 +31,7 @@ var method_body = [
   "_method.__throw = __throw;"
 ].join('');
 
-exports.compile = function (htmlfile, _url) {
+module.exports = function (htmlfile, _url) {
   htmlfile = htmlfile.replace(/\.js$/, '');
 
   var tpl = helper.getUnicode(htmlfile);
