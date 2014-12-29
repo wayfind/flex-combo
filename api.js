@@ -225,10 +225,10 @@ FlexCombo.prototype = {
     }
   },
   handle: function (req, res, next) {
-    var HOST = req.protocol + "://" + (req.hostname||req.host||req.headers.host);
+    var HOST = (req.protocol||"http") + "://" + (req.hostname||req.host||req.headers.host);
 
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    var URL = urlLib.parse(req.url).path.replace(/(.*)\?[^\?.]+$/, "$1");
+    var URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].+$/, "$1");
 
     var suffix = ["\\.phtml$","\\.js$","\\.css$","\\.png$","\\.gif$","\\.jpg$","\\.jpeg$","\\.ico$","\\.swf$","\\.xml$","\\.less$","\\.scss$","\\.svg$","\\.ttf$","\\.eot$","\\.woff$","\\.mp3$"];
     if (this.param.supportedFile) {
