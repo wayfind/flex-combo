@@ -236,9 +236,7 @@ FlexCombo.prototype = {
     }
 
     if (this.param.filter) {
-      for (var k in this.param.filter) {
-        suffix.push(k);
-      }
+      req.url = helper.filteredUrl(URL, this.param.filter, this.param.debug);
     }
 
     var engines = this.param.engine;
