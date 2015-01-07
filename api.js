@@ -123,6 +123,12 @@ function sassCompiler(xcssfile) {
   return sass.call(this, xcssfile);
 }
 
+/* TPL动态编译 */
+function tplCompiler(htmlfile, url) {
+  var jstpl = require("./engines/jstpl");
+  return jstpl.call(this, htmlfile, url);
+}
+
 /**
  * FlexCombo类
  */
@@ -205,10 +211,15 @@ FlexCombo.prototype = {
       }
     },
     {
+      rule: "\\.jpl$|\\.jpl\\.js$",
+      func: function (htmlfile, url) {
+        return tplCompiler(htmlfile, url);
+      }
+    },
+    {
       rule: "\\.html\\.js$",
       func: function (htmlfile, url) {
-        var jstpl = require("./engines/jstpl");
-        var content = jstpl.call(this, htmlfile, url);
+        var content = tplCompiler(htmlfile, url);
         if (content) {
           fsLib.writeFile(htmlfile, convert.call(this, content));
         }
@@ -246,14 +257,21 @@ FlexCombo.prototype = {
         if (URL.match(new RegExp(k))) {
           this.param.urls[pathLib.dirname(URL)] = pathLib.dirname(engines[k]);
         }
-        this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])))
+        this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])));
       }
     }
 
     if (URL.match(new RegExp(suffix.join('|')))) {
+      var U4M = URL;
+      if (URL.match(/\.less$|\.scss$|\.sass$/)) {
+        U4M += ".css";
+      }
+      else if (URL.match(/\.jpl$/)) {
+        U4M += ".js";
+      }
       res.writeHead(200, {
         "Access-Control-Allow-Origin": '*',
-        "Content-Type": mime.lookup(URL) + (isBinFile(URL) ? '' : ";charset=" + this.param.charset),
+        "Content-Type": mime.lookup(U4M) + (isBinFile(URL) ? '' : ";charset=" + this.param.charset),
         "X-MiddleWare": "flex-combo"
       });
 
@@ -352,7 +370,7 @@ FlexCombo.prototype = {
           var engine = this.engines[matchedIndex];
           buff = engine.func.call(this, absPath, _url);
           if (buff) {
-            var suffix = engine.rule.replace(/^\\./, '').split("\\.");
+            var suffix = engine.rule.replace(/^\\.|\$/g, '').split("\\.");
             this.param.debug && Log.engine(_url, absPath.replace(new RegExp(engine.rule), '.' + (suffix[0] || "unknown")));
           }
           else {
