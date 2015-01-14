@@ -5,7 +5,7 @@ try {
   module.exports = function(xcssfile, url, param, cb) {
     xcssfile = xcssfile.replace(/\.css$/, '');
     var sasstxt = helper.getUnicode(xcssfile);
-    var result = null
+    var result = null;
     if (sasstxt) {
       result = sass.renderSync({
         data: sasstxt

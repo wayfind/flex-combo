@@ -9,6 +9,12 @@ module.exports = function (xcssfile, url, param, cb) {
     compress: false,
     filename: xcssfile
   }, function(e, result) {
-    cb(e, result.css, xcssfile);
+    if (!e) {
+      cb(e, result.css, xcssfile);
+    }
+    else {
+      console.log(e);
+      cb(e, lesstext, xcssfile);
+    }
   });
 };

@@ -454,7 +454,7 @@ FlexCombo.prototype = {
           buff = self.result[files[i]];
           res.write(buff ? buff : new Buffer("/* "+files[i]+" Empty!*/"));
         }
-        Log.response(self.HOST+req.url);
+        Log.response(self.HOST + req.url);
         res.end();
       });
 
