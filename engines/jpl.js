@@ -32,34 +32,31 @@ var method_body = [
 ].join('');
 
 module.exports = function (htmlfile, _url, param, cb) {
-  htmlfile = htmlfile.replace(/\.html\.js$|\.jpl$|\.jpl\.js$/, ".html");
+  htmlfile = htmlfile.replace(/\.jpl$|\.html\.js$|\.tpl\.js$/, ".html");
 
   var tpl = helper.getUnicode(htmlfile);
-  var result = null;
-  if (tpl) {
-    try {
-      var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/igm, function ($, fn_body) {
-        return "function(_, _method) {" + method_body + fn_body + "};\n";
-      });
-    }
-    catch (e) {
-      result = null;
-    }
+  if (tpl !== null) {
+    var compiled = juicer(tpl)._render.toString().replace(/^function anonymous[^{]*?{([\s\S]*?)}$/img, function ($, fn_body) {
+      return "function(_, _method) {" + method_body + fn_body + "};\n";
+    });
 
     var wrapper = param.define;
     var packageName = helper.filteredUrl(_url, param.filter);
+    var result = '';
+
     if (!wrapper || "string" !== typeof wrapper || !!~["window", "global", "self", "parent", "Window", "Global"].indexOf(wrapper)) {
       result = "window[\"" + packageName + "\"] = " + compiled;
     }
-    else {
-      if (param.anonymous) {
-        result = wrapper + "(function(){return " + compiled + "});";
-      }
-      else {
-        result = wrapper + "(\"" + packageName + "\", function () {return " + compiled + "});";
-      }
+    else if (param.anonymous) {
+      result = wrapper + "(function(){return " + compiled + "});";
     }
-  }
+    else {
+      result = wrapper + "(\"" + packageName + "\", function () {return " + compiled + "});";
+    }
 
-  cb(false, result, htmlfile);
+    cb(false, result, htmlfile);
+  }
+  else {
+    cb(true);
+  }
 };

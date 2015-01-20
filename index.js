@@ -5,7 +5,7 @@
 var FlexCombo = require("./api");
 var pathLib = require("path");
 
-function enhanced(param, dir) {
+exports = module.exports = function (param, dir) {
   if (!dir) {
     var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容Windows
     dir = pathLib.join(userHome, ".flex-combo");
@@ -43,11 +43,7 @@ function enhanced(param, dir) {
       }
     }
     catch (e) {
-      next();
+      console.log(e);
     }
   }
 };
-
-exports = module.exports = enhanced;
-// 以下为了兼容0.6.x版本
-exports.enhanced = enhanced;
