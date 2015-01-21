@@ -16,41 +16,45 @@ function FlexCombo(param, dir) {
   this.URL = null;
   this.req = null;
   this.res = null;
-  this.cacheDir = null;
   this.param = Helper.clone(require("./lib/param"));
+  this.cacheDir = null;
   this.result = {};
 
-  var confFile = '';
-  if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
-    confFile = pathLib.join(dir, "config.json");
+  if (dir) {
+    var confFile = '';
+    if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
+      confFile = pathLib.join(dir, "config.json");
+    }
+    else {
+      confFile = pathLib.join(process.cwd(), dir || ".config", pathLib.basename(__dirname) + ".json");
+    }
+
+    var confDir = pathLib.dirname(confFile);
+    if (!fsLib.existsSync(confDir)) {
+      Helper.mkdirPSync(confDir);
+    }
+
+    if (!fsLib.existsSync(confFile)) {
+      fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
+    }
+
+    var confJSON = {};
+    try {
+      confJSON = JSON.parse(fsLib.readFileSync(confFile));
+    }
+    catch (e) {
+      Helper.Log.error("Params Error!");
+      confJSON = {};
+    }
+    this.param = Helper.merge(true, this.param, confJSON, param || {});
+
+    this.cacheDir = pathLib.join(confDir, "../.cache");
+    if (!fsLib.existsSync(this.cacheDir)) {
+      Helper.mkdirPSync(this.cacheDir);
+    }
   }
   else {
-    var moduleName = pathLib.basename(__dirname);
-    confFile = pathLib.join(process.cwd(), dir || ('.' + moduleName), moduleName + ".json");
-  }
-
-  var confDir = pathLib.dirname(confFile);
-  if (!fsLib.existsSync(confDir)) {
-    Helper.mkdirPSync(confDir);
-  }
-
-  if (!fsLib.existsSync(confFile)) {
-    fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
-  }
-
-  var confJSON = {};
-  try {
-    confJSON = JSON.parse(fsLib.readFileSync(confFile));
-  }
-  catch (e) {
-    Helper.Log.error("Params Error!");
-    confJSON = {};
-  }
-  this.param = Helper.merge(true, this.param, confJSON, param || {});
-
-  this.cacheDir = pathLib.join(confDir, "../.cache");
-  if (!fsLib.existsSync(this.cacheDir)) {
-    Helper.mkdirPSync(this.cacheDir);
+    this.param = Helper.merge(true, this.param, param || {});
   }
 };
 FlexCombo.prototype = {
@@ -158,9 +162,17 @@ FlexCombo.prototype = {
       outputCharset
     );
   },
+  getCacheFilePath: function(_url) {
+    if (this.cacheDir) {
+      return pathLib.join(this.cacheDir, Helper.MD5(pathLib.join(this.HOST, _url)));
+    }
+    else {
+      return false;
+    }
+  },
   cacheFile: function (_url, buff) {
-    var absPath = pathLib.join(this.cacheDir, Helper.MD5(pathLib.join(this.HOST, _url)));
-    if (!/[<>\*\?]+/g.test(absPath)) {
+    var absPath = this.getCacheFilePath(_url);
+    if (absPath && !/[<>\*\?]+/g.test(absPath)) {
       fsLib.writeFile(absPath, buff);
     }
   },
@@ -241,9 +253,9 @@ FlexCombo.prototype = {
     next();
   },
   cacheHandler: function (_url, next) {
-    var absPath = pathLib.join(this.cacheDir, Helper.MD5(pathLib.join(this.HOST, _url)));
+    var absPath = this.getCacheFilePath(_url);
 
-    if (!this.result[_url] && fsLib.existsSync(absPath)) {
+    if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
       this.param.debug && Helper.Log.cache(_url, absPath);
     }

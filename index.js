@@ -3,18 +3,10 @@
  * 通过require("flex-combo")
  * */
 var FlexCombo = require("./api");
-var pathLib = require("path");
 
-exports = module.exports = function (param, dir) {
-  if (!dir) {
-    var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容Windows
-    dir = pathLib.join(userHome, ".flex-combo");
-  }
-
-  var fcInst;
-
+module.exports = function (param, dir) {
   return function () {
-    fcInst = new FlexCombo(param, dir);
+    var fcInst = new FlexCombo(param, dir);
 
     var req, res, next;
     switch (arguments.length) {
