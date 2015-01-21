@@ -11,11 +11,11 @@ rl.question(" - Do you want to install node-sass? [y/N]", function(answer) {
   if (answer.toLowerCase() == 'y') {
     console.log("node-sass is installing");
 
-    var json = JSON.parse(fs.readFileSync("./package.json"));
-    json.dependencies['node-sass'] = "latest";
-    fs.writeFileSync("./package.json", JSON.stringify(json, null, 2));
+    var t = setInterval(function() {
+      console.log('['+new Date().toLocaleTimeString()+']', "Waiting...");
+    }, 5000);
 
-    var proc = exec("npm install node-sass", function (err) {
+    var proc = exec("npm install node-sass --save", function (err) {
       if (err !== null) {
         console.log("exec error: " + err);
       }
@@ -24,7 +24,8 @@ rl.question(" - Do you want to install node-sass? [y/N]", function(answer) {
       .on("data", function (data) {
         console.log(data);
       })
-      .on('end', function () {
+      .on("end", function () {
+        clearInterval(t);
         console.log("node-sass installed");
       });
   }

@@ -4,15 +4,23 @@ try {
   var sass = require("node-sass");
   module.exports = function(xcssfile, url, param, cb) {
     xcssfile = xcssfile.replace(/\.css$/, '');
-    var sasstxt = helper.getUnicode(xcssfile);
-    var result = null;
-    if (sasstxt) {
-      result = sass.renderSync({
-        data: sasstxt
-      }) + "\n";
-    }
+    var sasstext = helper.getUnicode(xcssfile);
 
-    cb(false, result, xcssfile);
+    if (sasstext !== null) {
+      sass.render({
+        file: xcssfile,
+        success: function(result) {
+          cb(false, result.css, xcssfile);
+        },
+        error: function(error) {
+          console.log(error);
+          cb(false, sasstext, xcssfile);
+        }
+      });
+    }
+    else {
+      cb(true);
+    }
   };
 }
 catch(e) {
