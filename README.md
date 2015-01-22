@@ -118,15 +118,22 @@ sudo flex-combo
 
 ```
 {
-    "urls": {
-        "/xxx": "/Users/david/xxxproject"
-     },
+    
+    "hosts": {
+        "a.tbcdn.cn":"122.225.67.241",
+        "g.tbcdn.cn":"115.238.23.250"
+    },
+    "cache": true,
     "headers": {"host":"a.tbcdn.cn"},
     "hostIp": "115.238.23.241",
     "host": "assets.taobaocdn.com",
     "servlet": "?",
     "seperator": ",",
     "charset": "utf-8",
+    "urlBasedCharset": {},
+    "urls": {
+        "/xxx": "/Users/david/xxxproject"
+     },
     "engine": {
       "^/mock/.+\\.json$":"mock/index.js"
     },
@@ -134,11 +141,6 @@ sudo flex-combo
         "\\?.+": "",
         "-min\\.js$": ".js",
         "-min\\.css$": ".css"
-    },
-    "urlBasedCharset": {},
-    "hosts": {
-        "a.tbcdn.cn":"122.225.67.241",
-        "g.tbcdn.cn":"115.238.23.250"
     },
     "debug": true
 }
@@ -194,6 +196,10 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 ``` 
 
 将根据发送请求的http头host信息。匹配合适的转发IP。如果请求为`a.tbcdn.cn/a.js`将转发到`122.225.67.241`。如果请求为`g.tbcdn.cn/a.js`。将转发到`115.238.23.250`
+
+#### 缓存远程文件
+
+`cache` 为true时，从远程抓取的文件将会被缓存
 
 #### combo规则相关参数
 

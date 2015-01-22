@@ -48,9 +48,11 @@ function FlexCombo(param, dir) {
     }
     this.param = Helper.merge(true, this.param, confJSON, param || {});
 
-    this.cacheDir = pathLib.join(confDir, "../.cache");
-    if (!fsLib.existsSync(this.cacheDir)) {
-      Helper.mkdirPSync(this.cacheDir);
+    if (this.param.cache) {
+      this.cacheDir = pathLib.join(confDir, "../.cache");
+      if (!fsLib.existsSync(this.cacheDir)) {
+        Helper.mkdirPSync(this.cacheDir);
+      }
     }
   }
   else {
