@@ -22,10 +22,10 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 
 ##快速上手
 
-首先，修改`hosts文件`，将需要代理的线上地址映射到本地，例如(`g.tbcdn.cn`)：
+首先，修改`hosts文件`，将需要代理的线上地址映射到本地，例如(`g.cdn.cn`)：
 
 ````
-127.0.0.1   g.tbcdn.cn
+127.0.0.1   g.cdn.cn
 ```
 
 然后，在命令行启动`Flex Combo`
@@ -33,7 +33,7 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 ```
 sudo flex-combo
 ```
-之后所有向`g.tbcdn.cn`发起的静态资源请求都将通过`Flex Combo`代理
+之后所有向`g.cdn.cn`发起的静态资源请求都将通过`Flex Combo`代理
 
 ## 特性
 
@@ -96,7 +96,7 @@ sudo flex-combo
     -d, --dir [string]        本地目录，默认为执行命令的当前目录
     -u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
     -H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
-    -s, --servlet [string]    Combo的servlet，对于淘宝而言是"?",对yahoo而言是"combo"，默认是"?"
+    -s, --servlet [string]    Combo的servlet，对于Tengine而言是"?",对yahoo而言是"combo"，默认是"?"
     -e, --seperator [string]  文件分隔符，默认为","
     -c, --charset [string]    http响应数据的编码方式，默认为utf-8
     -p, --http_port [int]     启动HTTP服务的端口，默认为80
@@ -120,13 +120,12 @@ sudo flex-combo
 {
     
     "hosts": {
-        "a.tbcdn.cn":"122.225.67.241",
-        "g.tbcdn.cn":"115.238.23.250"
+        "a.cdn.cn":"122.225.67.241",
+        "g.cdn.cn":"115.238.23.250"
     },
     "cache": true,
-    "headers": {"host":"a.tbcdn.cn"},
+    "headers": {"host":"a.cdn.cn"},
     "hostIp": "115.238.23.241",
-    "host": "assets.taobaocdn.com",
     "servlet": "?",
     "seperator": ",",
     "charset": "utf-8",
@@ -178,24 +177,22 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 `Flex Combo`支持当资源不在本地时去线上服务器请求所需资源。host相关参数是定位服务器的关键参数，与host有关的参数有4个。`host`、`hostIp`、`headers`、`hosts`
 
-* `host`参数是一个域名，表示请求不存在时需要转发的资源服务器。一般情况下，以淘宝为例，一般资源是通过`a.tbcdn.cn`域名访问，但是资源还可以通过`assets.taobaocdn.com`访问。这样同样IP配置了多个域名的情况下，只需要配置`host`为`assets.taobaocdn.com`就可以。因为一般情况下我们会将常用域名的host修改为`127.0.0.1`，这种情况下我们通过另外一个域名访问真实环境的资源。
-
-* 通过IP访问。如果资源服务器没有额外域名。 flex-combo支持以`hostIp`+`headers`的方式定义host。`hostip`必须是一个IP地址。如：`"hostip": "10.11.23.1"`。一般互联网公司的资源服务器都不支持直接IP访问，必须配置http头。headers定义了向此ip发起http请求时候必须设置的http头信息。http头信息以JSON的方式定义。如：
+* 通过IP访问。如果资源服务器没有额外域名。 flex-combo支持以`hostIp`+`headers`的方式定义host。`hostip`必须是一个IP地址。如：`"hostIp": "10.11.23.1"`。一般互联网公司的资源服务器都不支持直接IP访问，必须配置http头。headers定义了向此ip发起http请求时候必须设置的http头信息。http头信息以JSON的方式定义。如：
 
 ```
-"headers": {"host": "a.tbcdn.cn"},
+"headers": {"host": "a.cdn.cn"},
 ```
 
-* 多资源服务器转发。以淘宝为例a.tbcdn.cn的请求需要转发到某个IP。g.tbcdn.cn的请求需要转发到另外一个IP。`hosts`参数允许配置多组域名、IP组信息。以便选择合适的服务器转发。`hosts`参数是一个对象，其中key表示域名，value表示IP。例如：
+* 多资源服务器转发。例如a.cdn.cn的请求需要转发到某个IP。g.cdn.cn的请求需要转发到另外一个IP。`hosts`参数允许配置多组域名、IP组信息。以便选择合适的服务器转发。`hosts`参数是一个对象，其中key表示域名，value表示IP。例如：
 
 ```
 "hosts":{
-    "a.tbcdn.cn": "122.225.67.241",
-    "g.tbcdn.cn": "115.238.23.250"
+    "a.cdn.cn": "122.225.67.241",
+    "g.cdn.cn": "115.238.23.250"
 }
 ``` 
 
-将根据发送请求的http头host信息。匹配合适的转发IP。如果请求为`a.tbcdn.cn/a.js`将转发到`122.225.67.241`。如果请求为`g.tbcdn.cn/a.js`。将转发到`115.238.23.250`
+将根据发送请求的http头host信息。匹配合适的转发IP。如果请求为`a.cdn.cn/a.js`将转发到`122.225.67.241`。如果请求为`g.cdn.cn/a.js`。将转发到`115.238.23.250`
 
 #### 缓存远程文件
 
