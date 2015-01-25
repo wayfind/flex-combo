@@ -29,11 +29,7 @@ program
     .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
     .parse(process.argv);
 
-var url = program.url || '/';
-var dir = program.dir || '.';
-
-var param = {urls:{}};
-param.urls[url] = dir;
+var param = {rootdir: (program.dir || '.')};
 
 if(program.servlet){
     param.servlet = program.servlet;

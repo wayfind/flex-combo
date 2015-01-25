@@ -12,19 +12,24 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 区别于生产环境的Combo，`Flex Combo`专为前端开发环境量身打造，舍弃部分高并发特性，从而提供了丰富的功能和轻量的体积。
 
 ## 安装
-安装为命令
 
-    npm install -g flex-combo
+全局安装
+
+```
+npm install -g flex-combo
+```
 
 或者安装到某个项目
 
-    npm install flex-combo
+```
+npm install flex-combo
+```
 
 ##快速上手
 
 首先，修改`hosts文件`，将需要代理的线上地址映射到本地，例如(`g.cdn.cn`)：
 
-````
+```
 127.0.0.1   g.cdn.cn
 ```
 
@@ -33,7 +38,8 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 ```
 sudo flex-combo
 ```
-之后所有向`g.cdn.cn`发起的静态资源请求都将通过`Flex Combo`代理
+
+之后所有向`g.cdn.cn`发起的资源文件请求都将通过`Flex Combo`代理
 
 ## 特性
 
@@ -91,16 +97,18 @@ sudo flex-combo
 
 用法: flex-combo [options]
 
-  Options 如下:
+Options 如下:
 
-    -d, --dir [string]        本地目录，默认为执行命令的当前目录
-    -u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
-    -H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
-    -s, --servlet [string]    Combo的servlet，对于Tengine而言是"?",对yahoo而言是"combo"，默认是"?"
-    -e, --seperator [string]  文件分隔符，默认为","
-    -c, --charset [string]    http响应数据的编码方式，默认为utf-8
-    -p, --http_port [int]     启动HTTP服务的端口，默认为80
-    -P, --https_port [int]    启动HTTPS服务的端口，默认为443
+```
+-d, --dir [string]        本地目录，默认为执行命令的当前目录
+-u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
+-H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
+-s, --servlet [string]    Combo的servlet，对于Tengine而言是"?",对yahoo而言是"combo"，默认是"?"
+-e, --seperator [string]  文件分隔符，默认为","
+-c, --charset [string]    http响应数据的编码方式，默认为utf-8
+-p, --http_port [int]     启动HTTP服务的端口，默认为80
+-P, --https_port [int]    启动HTTPS服务的端口，默认为443
+```
 
 在项目目录下执行`flex-combo`而不带任何参数时，将以项目目录为根目录建立Combo服务器。
 
@@ -118,7 +126,12 @@ sudo flex-combo
 
 ```
 {
-    
+    "rootdir": "src",
+    "urls": {
+        "/xxx": "/Users/david/xxxproject"
+     },
+    "charset": "utf-8",
+    "urlBasedCharset": {},
     "hosts": {
         "a.cdn.cn":"122.225.67.241",
         "g.cdn.cn":"115.238.23.250"
@@ -128,11 +141,6 @@ sudo flex-combo
     "hostIp": "115.238.23.241",
     "servlet": "?",
     "seperator": ",",
-    "charset": "utf-8",
-    "urlBasedCharset": {},
-    "urls": {
-        "/xxx": "/Users/david/xxxproject"
-     },
     "engine": {
       "^/mock/.+\\.json$":"mock/index.js"
     },
@@ -141,9 +149,12 @@ sudo flex-combo
         "-min\\.js$": ".js",
         "-min\\.css$": ".css"
     },
-    "debug": true
+    "traceRule": ""
 }
 ```
+#### rootdir
+
+`Flex Combo`所代理资源文件的本地映射根目录
 
 #### urls
 
@@ -172,6 +183,20 @@ urls是对象，可以配置多个。如：
 `Flex Combo`将根据**最长匹配**原则，选择最合适规则访问资源文件。上面例子中，如果请求`/xxx/aaa/b.js`,虽然同时符合两项规则，但最终生效规则是字符串最长的那项，也就是`"/xxx/aaa":"/Users/david/yyyproject"`，`/xxx/aaa/b.js`会从`/Users/david/yyyproject"`获取。
 
 urls参数对前端开发灵活的在本地支持多个项目有重要意义。在实际项目中，可以灵活运用配置文件全局参数和命令行参数以获取开发便利性。
+
+#### 编码参数
+
+`charset` 设置flex-combo返回数据的编码集。只能设置为`gbk`或者`utf-8`。该设置与源文件编码集无关。`Flex Combo`假设源文件只有`gbk`和`utf-8`两种编码方式。会自动探测源文件是否`utf-8`。因此你可以在一个combo链接中同时引入`utf-8`和`gbk`编码的文件而不会出错。
+
+`urlBasedCharset` 可针对某一个url设置响应字符集。例如：
+
+```
+    "charset" : "utf-8",
+    "urlBasedCharset" : {"/apps/aaa.js":"gbk"}
+```
+
+允许在大多数情况下返回字符集为utf-8字符集的资源。但在访问/apps/aaa.js的情况下，以gbk的方式编码。
+这个特性多被用来引入编码几不同的第三方脚本。
 
 #### host相关参数
 
@@ -202,20 +227,6 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 不同的开发环境有不同的combo需求。通过`servlet`和`seperator`两个参数决定。
 
-#### 编码参数
-
-`charset` 设置flex-combo返回数据的编码集。只能设置为`gbk`或者`utf-8`。该设置与源文件编码集无关。`Flex Combo`假设源文件只有`gbk`和`utf-8`两种编码方式。会自动探测源文件是否`utf-8`。因此你可以在一个combo链接中同时引入`utf-8`和`gbk`编码的文件而不会出错。
-
-`urlBasedCharset` 可针对某一个url设置响应字符集。例如：
-
-```
-    "charset" : "utf-8",
-    "urlBasedCharset" : {"/apps/aaa.js":"gbk"}
-```
-
-允许在大多数情况下返回字符集为utf-8字符集的资源。但在访问/apps/aaa.js的情况下，以gbk的方式编码。
-这个特性多被用来引入编码几不同的第三方脚本。
-
 #### 自定义引擎
 
 `engine` 支持使用者自行插入处理逻辑（处理权交给使用者编写的js），可应用于截获url进行数据mock或对应某些文件后缀匹配处理逻辑。
@@ -224,9 +235,9 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 `filter` 配置可以用来过滤传入url。`filter`配置是一个对象，其中key是匹配的正则表达式，value是替换的字符串，支持正则表达式变量。替换的顺序与定义无关。这个设置可被用来在替换访问压缩的js文件为原文件。做到开发者友好。
 
-#### 调试模式
+#### 调试信息输出规则
 
-`debug` 为true时，终端窗口将显示更多信息
+`traceRule` 为正则表达式字符串，确定终端窗口显示信息的规则
 
 ## lib开发模式
 
