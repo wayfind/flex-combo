@@ -12,20 +12,25 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 区别于生产环境的Combo，`Flex Combo`专为前端开发环境量身打造，舍弃部分高并发特性，从而提供了丰富的功能和轻量的体积。
 
 ## 安装
-安装为命令
 
-    npm install -g flex-combo
+全局安装
+
+```
+npm install -g flex-combo
+```
 
 或者安装到某个项目
 
-    npm install flex-combo
+```
+npm install flex-combo
+```
 
 ##快速上手
 
-首先，修改`hosts文件`，将需要代理的线上地址映射到本地，例如(`g.tbcdn.cn`)：
+首先，修改`hosts文件`，将需要代理的线上地址映射到本地，例如(`g.cdn.cn`)：
 
-````
-127.0.0.1   g.tbcdn.cn
+```
+127.0.0.1   g.cdn.cn
 ```
 
 然后，在命令行启动`Flex Combo`
@@ -33,7 +38,8 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 ```
 sudo flex-combo
 ```
-之后所有向`g.tbcdn.cn`发起的静态资源请求都将通过`Flex Combo`代理
+
+之后所有向`g.cdn.cn`发起的资源文件请求都将通过`Flex Combo`代理
 
 ## 特性
 
@@ -91,16 +97,18 @@ sudo flex-combo
 
 用法: flex-combo [options]
 
-  Options 如下:
+Options 如下:
 
-    -d, --dir [string]        本地目录，默认为执行命令的当前目录
-    -u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
-    -H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
-    -s, --servlet [string]    Combo的servlet，对于淘宝而言是"?",对yahoo而言是"combo"，默认是"?"
-    -e, --seperator [string]  文件分隔符，默认为","
-    -c, --charset [string]    http响应数据的编码方式，默认为utf-8
-    -p, --http_port [int]     启动HTTP服务的端口，默认为80
-    -P, --https_port [int]    启动HTTPS服务的端口，默认为443
+```
+-d, --dir [string]        本地目录，默认为执行命令的当前目录
+-u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
+-H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
+-s, --servlet [string]    Combo的servlet，对于Tengine而言是"?",对yahoo而言是"combo"，默认是"?"
+-e, --seperator [string]  文件分隔符，默认为","
+-c, --charset [string]    http响应数据的编码方式，默认为utf-8
+-p, --http_port [int]     启动HTTP服务的端口，默认为80
+-P, --https_port [int]    启动HTTPS服务的端口，默认为443
+```
 
 在项目目录下执行`flex-combo`而不带任何参数时，将以项目目录为根目录建立Combo服务器。
 
@@ -118,15 +126,21 @@ sudo flex-combo
 
 ```
 {
+    "rootdir": "src",
     "urls": {
         "/xxx": "/Users/david/xxxproject"
      },
-    "headers": {"host":"a.tbcdn.cn"},
+    "charset": "utf-8",
+    "urlBasedCharset": {},
+    "hosts": {
+        "a.cdn.cn":"122.225.67.241",
+        "g.cdn.cn":"115.238.23.250"
+    },
+    "cache": true,
+    "headers": {"host":"a.cdn.cn"},
     "hostIp": "115.238.23.241",
-    "host": "assets.taobaocdn.com",
     "servlet": "?",
     "seperator": ",",
-    "charset": "utf-8",
     "engine": {
       "^/mock/.+\\.json$":"mock/index.js"
     },
@@ -135,14 +149,12 @@ sudo flex-combo
         "-min\\.js$": ".js",
         "-min\\.css$": ".css"
     },
-    "urlBasedCharset": {},
-    "hosts": {
-        "a.tbcdn.cn":"122.225.67.241",
-        "g.tbcdn.cn":"115.238.23.250"
-    },
-    "debug": true
+    "traceRule": ""
 }
 ```
+#### rootdir
+
+`Flex Combo`所代理资源文件的本地映射根目录
 
 #### urls
 
@@ -172,33 +184,6 @@ urls是对象，可以配置多个。如：
 
 urls参数对前端开发灵活的在本地支持多个项目有重要意义。在实际项目中，可以灵活运用配置文件全局参数和命令行参数以获取开发便利性。
 
-#### host相关参数
-
-`Flex Combo`支持当资源不在本地时去线上服务器请求所需资源。host相关参数是定位服务器的关键参数，与host有关的参数有4个。`host`、`hostIp`、`headers`、`hosts`
-
-* `host`参数是一个域名，表示请求不存在时需要转发的资源服务器。一般情况下，以淘宝为例，一般资源是通过`a.tbcdn.cn`域名访问，但是资源还可以通过`assets.taobaocdn.com`访问。这样同样IP配置了多个域名的情况下，只需要配置`host`为`assets.taobaocdn.com`就可以。因为一般情况下我们会将常用域名的host修改为`127.0.0.1`，这种情况下我们通过另外一个域名访问真实环境的资源。
-
-* 通过IP访问。如果资源服务器没有额外域名。 flex-combo支持以`hostIp`+`headers`的方式定义host。`hostip`必须是一个IP地址。如：`"hostip": "10.11.23.1"`。一般互联网公司的资源服务器都不支持直接IP访问，必须配置http头。headers定义了向此ip发起http请求时候必须设置的http头信息。http头信息以JSON的方式定义。如：
-
-```
-"headers": {"host": "a.tbcdn.cn"},
-```
-
-* 多资源服务器转发。以淘宝为例a.tbcdn.cn的请求需要转发到某个IP。g.tbcdn.cn的请求需要转发到另外一个IP。`hosts`参数允许配置多组域名、IP组信息。以便选择合适的服务器转发。`hosts`参数是一个对象，其中key表示域名，value表示IP。例如：
-
-```
-"hosts":{
-    "a.tbcdn.cn": "122.225.67.241",
-    "g.tbcdn.cn": "115.238.23.250"
-}
-``` 
-
-将根据发送请求的http头host信息。匹配合适的转发IP。如果请求为`a.tbcdn.cn/a.js`将转发到`122.225.67.241`。如果请求为`g.tbcdn.cn/a.js`。将转发到`115.238.23.250`
-
-#### combo规则相关参数
-
-不同的开发环境有不同的combo需求。通过`servlet`和`seperator`两个参数决定。
-
 #### 编码参数
 
 `charset` 设置flex-combo返回数据的编码集。只能设置为`gbk`或者`utf-8`。该设置与源文件编码集无关。`Flex Combo`假设源文件只有`gbk`和`utf-8`两种编码方式。会自动探测源文件是否`utf-8`。因此你可以在一个combo链接中同时引入`utf-8`和`gbk`编码的文件而不会出错。
@@ -213,6 +198,35 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 允许在大多数情况下返回字符集为utf-8字符集的资源。但在访问/apps/aaa.js的情况下，以gbk的方式编码。
 这个特性多被用来引入编码几不同的第三方脚本。
 
+#### host相关参数
+
+`Flex Combo`支持当资源不在本地时去线上服务器请求所需资源。host相关参数是定位服务器的关键参数，与host有关的参数有4个。`host`、`hostIp`、`headers`、`hosts`
+
+* 通过IP访问。如果资源服务器没有额外域名。 flex-combo支持以`hostIp`+`headers`的方式定义host。`hostip`必须是一个IP地址。如：`"hostIp": "10.11.23.1"`。一般互联网公司的资源服务器都不支持直接IP访问，必须配置http头。headers定义了向此ip发起http请求时候必须设置的http头信息。http头信息以JSON的方式定义。如：
+
+```
+"headers": {"host": "a.cdn.cn"},
+```
+
+* 多资源服务器转发。例如a.cdn.cn的请求需要转发到某个IP。g.cdn.cn的请求需要转发到另外一个IP。`hosts`参数允许配置多组域名、IP组信息。以便选择合适的服务器转发。`hosts`参数是一个对象，其中key表示域名，value表示IP。例如：
+
+```
+"hosts":{
+    "a.cdn.cn": "122.225.67.241",
+    "g.cdn.cn": "115.238.23.250"
+}
+``` 
+
+将根据发送请求的http头host信息。匹配合适的转发IP。如果请求为`a.cdn.cn/a.js`将转发到`122.225.67.241`。如果请求为`g.cdn.cn/a.js`。将转发到`115.238.23.250`
+
+#### 缓存远程文件
+
+`cache` 为true时，从远程抓取的文件将会被缓存
+
+#### combo规则相关参数
+
+不同的开发环境有不同的combo需求。通过`servlet`和`seperator`两个参数决定。
+
 #### 自定义引擎
 
 `engine` 支持使用者自行插入处理逻辑（处理权交给使用者编写的js），可应用于截获url进行数据mock或对应某些文件后缀匹配处理逻辑。
@@ -221,9 +235,9 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 `filter` 配置可以用来过滤传入url。`filter`配置是一个对象，其中key是匹配的正则表达式，value是替换的字符串，支持正则表达式变量。替换的顺序与定义无关。这个设置可被用来在替换访问压缩的js文件为原文件。做到开发者友好。
 
-#### 调试模式
+#### 调试信息输出规则
 
-`debug` 为true时，终端窗口将显示更多信息
+`traceRule` 为正则表达式字符串，确定终端窗口显示信息的规则
 
 ## lib开发模式
 

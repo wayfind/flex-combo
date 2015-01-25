@@ -48,13 +48,23 @@ function FlexCombo(param, dir) {
     }
     this.param = Helper.merge(true, this.param, confJSON, param || {});
 
-    this.cacheDir = pathLib.join(confDir, "../.cache");
-    if (!fsLib.existsSync(this.cacheDir)) {
-      Helper.mkdirPSync(this.cacheDir);
+    if (confJSON.filter) {
+      this.param.filter = confJSON.filter;
+    }
+
+    if (this.param.cache) {
+      this.cacheDir = pathLib.join(confDir, "../.cache");
+      if (!fsLib.existsSync(this.cacheDir)) {
+        Helper.mkdirPSync(this.cacheDir);
+      }
     }
   }
   else {
     this.param = Helper.merge(true, this.param, param || {});
+  }
+
+  if (!this.param.urls['/']) {
+    this.param.urls['/'] = this.param.rootdir || "src";
   }
 };
 FlexCombo.prototype = {
@@ -162,7 +172,7 @@ FlexCombo.prototype = {
       outputCharset
     );
   },
-  getCacheFilePath: function(_url) {
+  getCacheFilePath: function (_url) {
     if (this.cacheDir) {
       return pathLib.join(this.cacheDir, Helper.MD5(pathLib.join(this.HOST, _url)));
     }
@@ -210,7 +220,7 @@ FlexCombo.prototype = {
     return requestOption;
   },
   engineHandler: function (_url, next) {
-    var absPath = Helper.getRealPath(_url, this.param.filter, this.param.urls, this.param.debug);
+    var absPath = Helper.getRealPath(_url, this.param.filter, this.param.urls, this.param.traceRule);
 
     var matchedIndex = -1;
     for (var i = this.engines.length - 1, matched = null, matchedNum = -1; i >= 0; i--) {
@@ -227,7 +237,9 @@ FlexCombo.prototype = {
       engine.func(absPath, _url, this.param, function (e, result, realPath) {
         if (!e) {
           self.result[_url] = self.convert(result, _url);
-          self.param.debug && Helper.Log.engine(_url, realPath || absPath);
+          if ((_url + (realPath || absPath)).match(Helper.RegExp(self.param.traceRule))) {
+            Helper.Log.engine(_url, realPath || absPath);
+          }
         }
         next();
       });
@@ -247,7 +259,9 @@ FlexCombo.prototype = {
       }
 
       this.result[_url] = buff;
-      this.param.debug && Helper.Log.local(_url, absPath);
+      if ((_url + absPath).match(Helper.RegExp(this.param.traceRule))) {
+        Helper.Log.local(_url, absPath);
+      }
     }
 
     next();
@@ -257,7 +271,9 @@ FlexCombo.prototype = {
 
     if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
-      this.param.debug && Helper.Log.cache(_url, absPath);
+      if ((_url + absPath).match(Helper.RegExp(this.param.traceRule))) {
+        Helper.Log.cache(_url, absPath);
+      }
     }
 
     next();
@@ -283,7 +299,9 @@ FlexCombo.prototype = {
                 var buff = Helper.joinBuffer(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
-                Helper.Log.remote(_url, requestOption);
+                if (_url.match(Helper.RegExp(self.param.traceRule))) {
+                  Helper.Log.remote(_url, requestOption);
+                }
                 next();
               });
           })
@@ -299,7 +317,7 @@ FlexCombo.prototype = {
           this.res.end(fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico")));
         }
         else {
-          this.result[_url] = new Buffer("/* " + _url + " Loop! */");
+          this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
           Helper.Log.error(_url);
         }
         next();
@@ -318,7 +336,9 @@ FlexCombo.prototype = {
       var self = this;
       var Q = [];
 
-      Helper.Log.request(this.HOST, files);
+      if ((this.HOST + files.join(' ')).match(Helper.RegExp(this.param.traceRule))) {
+        Helper.Log.request(this.HOST, files);
+      }
 
       for (var i = 0; i < FLen; i++) {
         Q.push(
@@ -351,7 +371,10 @@ FlexCombo.prototype = {
           buff = self.result[files[i]];
           res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
         }
-        Helper.Log.response(self.HOST + req.url);
+        var resurl = self.HOST + req.url;
+        if (resurl.match(Helper.RegExp(self.param.traceRule))) {
+          Helper.Log.response(resurl);
+        }
         res.end();
       });
     }
