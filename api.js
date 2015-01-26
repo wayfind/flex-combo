@@ -66,6 +66,8 @@ function FlexCombo(param, dir) {
   if (!this.param.urls['/']) {
     this.param.urls['/'] = this.param.rootdir || "src";
   }
+
+  this.param.traceRule = new RegExp(this.param.traceRule, 'i');
 };
 FlexCombo.prototype = {
   constructor: FlexCombo,
@@ -237,7 +239,7 @@ FlexCombo.prototype = {
       engine.func(absPath, _url, this.param, function (e, result, realPath) {
         if (!e) {
           self.result[_url] = self.convert(result, _url);
-          if ((_url + (realPath || absPath)).match(Helper.RegExp(self.param.traceRule))) {
+          if (("Engine " + _url + (realPath || absPath)).match(self.param.traceRule)) {
             Helper.Log.engine(_url, realPath || absPath);
           }
         }
@@ -259,7 +261,7 @@ FlexCombo.prototype = {
       }
 
       this.result[_url] = buff;
-      if ((_url + absPath).match(Helper.RegExp(this.param.traceRule))) {
+      if (("Local " + _url + absPath).match(this.param.traceRule)) {
         Helper.Log.local(_url, absPath);
       }
     }
@@ -271,7 +273,7 @@ FlexCombo.prototype = {
 
     if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
-      if ((_url + absPath).match(Helper.RegExp(this.param.traceRule))) {
+      if (("Cache " + _url + absPath).match(this.param.traceRule)) {
         Helper.Log.cache(_url, absPath);
       }
     }
@@ -288,7 +290,7 @@ FlexCombo.prototype = {
             var buffer = [];
             nsres
               .on("error", function () {
-                self.result[_url] = new Buffer("/* " + _url + " Proxy ERROR! */");
+                self.result[_url] = new Buffer("/* " + _url + " Fetch ERROR! */");
                 Helper.Log.error(_url);
                 next();
               })
@@ -299,14 +301,14 @@ FlexCombo.prototype = {
                 var buff = Helper.joinBuffer(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
-                if (_url.match(Helper.RegExp(self.param.traceRule))) {
+                if (("Remote " + _url).match(self.param.traceRule)) {
                   Helper.Log.remote(_url, requestOption);
                 }
                 next();
               });
           })
           .on("error", function () {
-            self.result[_url] = new Buffer("/* " + _url + " Req ERROR! */");
+            self.result[_url] = new Buffer("/* " + _url + " Request ERROR! */");
             Helper.Log.error(_url);
             next();
           })
@@ -336,7 +338,7 @@ FlexCombo.prototype = {
       var self = this;
       var Q = [];
 
-      if ((this.HOST + files.join(' ')).match(Helper.RegExp(this.param.traceRule))) {
+      if (("Request " + this.HOST + files.join(' ')).match(this.param.traceRule)) {
         Helper.Log.request(this.HOST, files);
       }
 
@@ -372,7 +374,7 @@ FlexCombo.prototype = {
           res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
         }
         var resurl = self.HOST + req.url;
-        if (resurl.match(Helper.RegExp(self.param.traceRule))) {
+        if (("Response " + resurl).match(self.param.traceRule)) {
           Helper.Log.response(resurl);
         }
         res.end();
