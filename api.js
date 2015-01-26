@@ -32,10 +32,12 @@ function FlexCombo(param, dir) {
     var confDir = pathLib.dirname(confFile);
     if (!fsLib.existsSync(confDir)) {
       Helper.mkdirPSync(confDir);
+      fsLib.chmod(confDir, 0777);
     }
 
     if (!fsLib.existsSync(confFile)) {
       fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
+      fsLib.chmod(confFile, 0777);
     }
 
     var confJSON = {};
@@ -56,6 +58,7 @@ function FlexCombo(param, dir) {
       this.cacheDir = pathLib.join(confDir, "../.cache");
       if (!fsLib.existsSync(this.cacheDir)) {
         Helper.mkdirPSync(this.cacheDir);
+        fsLib.chmod(this.cacheDir, 0777);
       }
     }
   }
