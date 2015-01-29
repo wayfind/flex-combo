@@ -123,7 +123,7 @@ FlexCombo.prototype = {
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].+$/, "$1");
+    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
 
     var suffix = ["\\.jpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
@@ -192,11 +192,13 @@ FlexCombo.prototype = {
     }
   },
   buildRequestOption: function (url) {
-    var protocol = (this.req.protocol || "http") + ':';
+    if (this.req.headers["x-via"] == "flex-combo") {
+      return false;
+    }
 
+    var protocol = (this.req.protocol || "http") + ':';
     var H = this.req.headers.host.split(':');
     var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
-
     var reqHostName = H[0];
     var reqHostIP;
     if (this.param.hostIp) {
@@ -215,13 +217,13 @@ FlexCombo.prototype = {
       port: reqPort,
       path: url,
       method: this.req.method || "GET",
-      headers: {host: reqHostName}
+      headers: {
+        "x-via": "flex-combo",
+        host: reqHostName
+      }
     };
     requestOption.headers = Helper.merge(true, this.param.headers, requestOption.headers);
 
-    if (reqHostIP == reqHostName) {
-      return false;
-    }
     return requestOption;
   },
   engineHandler: function (_url, next) {
