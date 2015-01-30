@@ -4,7 +4,7 @@
  * */
 var FlexCombo = require("./api");
 
-module.exports = function (param, dir) {
+exports = module.exports = function (param, dir) {
   return function () {
     var fcInst = new FlexCombo(param, dir);
 
@@ -38,4 +38,28 @@ module.exports = function (param, dir) {
       console.log(e);
     }
   }
+};
+
+exports.engine = function(options) {
+  var through = require("through2");
+
+  return through.obj(function (file, enc, cb) {
+    var self = this;
+
+    if (file.isNull()) {
+      self.emit("error", "isNull");
+      cb(null, file);
+      return;
+    }
+
+    if (file.isStream()) {
+      self.emit("error", "Streaming not supported");
+      cb(null, file);
+      return;
+    }
+
+    // TODO: file handler
+    // this.push(file);
+    // cb();
+  });
 };

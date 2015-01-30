@@ -192,7 +192,7 @@ FlexCombo.prototype = {
     }
   },
   buildRequestOption: function (url) {
-    if (this.req.headers["x-via"] == "flex-combo") {
+    if (this.req.headers["x-broker"] == "flex-combo") {
       return false;
     }
 
@@ -211,6 +211,10 @@ FlexCombo.prototype = {
       reqHostIP = reqHostName;
     }
 
+    if (reqHostIP == reqHostName && this.req.url.match(/favicon\.ico$/)) {
+      return false;
+    }
+
     var requestOption = {
       protocol: protocol,
       host: reqHostIP,
@@ -218,7 +222,7 @@ FlexCombo.prototype = {
       path: url,
       method: this.req.method || "GET",
       headers: {
-        "x-via": "flex-combo",
+        "x-broker": "flex-combo",
         host: reqHostName
       }
     };
