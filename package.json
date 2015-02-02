@@ -3,24 +3,17 @@
   "version": "0.9.0",
   "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
   "main": "index.js",
-  "scripts": {
-    "postinstall": "node ./scripts/asksass.js"
-  },
   "bin": {
     "flex-combo": "./bin/flex-combo"
   },
   "dependencies": {
     "async": "~0.9.0",
     "commander": "~2.5.0",
+    "dac": "~0.2.0",
     "iconv-lite": "~0.4.4",
     "is-utf8": "~0.2.0",
-    "juicer": "~0.6.6-stable",
-    "less": "~2.2.0",
     "mace": "~2.0.0",
     "mime": "~1.2.11",
-    "convert-source-map": "~0.4.0",
-    "vinyl-sourcemaps-apply": "~0.1.4",
-    "gulp-util": "~3.0.1",
     "through2": "~0.6.3"
   },
   "repository": {

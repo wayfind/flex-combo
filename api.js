@@ -95,20 +95,7 @@ FlexCombo.prototype = {
       FlexCombo.prototype.parser = func;
     }
   },
-  engines: [
-    {
-      rule: "\\.less$|\\.less\\.css$",
-      func: require("./engines/less")
-    },
-    {
-      rule: "\\.scss$|\\.scss\\.css$",
-      func: require("./engines/sass")
-    },
-    {
-      rule: "\\.jpl$|\\.html.js$|\\.tpl.js$",
-      func: require("./engines/jpl")
-    }
-  ],
+  engines: [],
   addEngine: function (rule, func) {
     if (rule && typeof func == "function") {
       this.engines.push({
@@ -395,4 +382,4 @@ FlexCombo.prototype = {
   }
 };
 
-exports = module.exports = FlexCombo;
+module.exports = FlexCombo;

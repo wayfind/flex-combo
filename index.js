@@ -3,6 +3,9 @@
  * 通过require("flex-combo")
  * */
 var FlexCombo = require("./api");
+var DAC = require("dac");
+FlexCombo.prototype.addEngine("\\.less$|\\.less\\.css$", DAC.less);
+FlexCombo.prototype.addEngine("\\.jpl$", DAC.jpl);
 
 exports = module.exports = function (param, dir) {
   return function () {
@@ -40,8 +43,12 @@ exports = module.exports = function (param, dir) {
   }
 };
 
-exports.engine = function(options) {
+exports.engine = function(param, dir) {
+  param = param || {};
+
   var through = require("through2");
+  var pathLib = require("path");
+  var fcInst = new FlexCombo(param, dir);
 
   return through.obj(function (file, enc, cb) {
     var self = this;
@@ -58,8 +65,11 @@ exports.engine = function(options) {
       return;
     }
 
-    // TODO: file handler
-    // this.push(file);
-    // cb();
+    var url = file.path.replace(pathLib.join(process.cwd(), fcInst.param.rootdir), '');
+    fcInst.engineHandler(url, function() {
+      file.contents = fcInst.result[url];
+      self.push(file);
+      cb();
+    });
   });
 };
