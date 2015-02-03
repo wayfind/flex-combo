@@ -95,20 +95,7 @@ FlexCombo.prototype = {
       FlexCombo.prototype.parser = func;
     }
   },
-  engines: [
-    {
-      rule: "\\.less$|\\.less\\.css$",
-      func: require("./engines/less")
-    },
-    {
-      rule: "\\.scss$|\\.scss\\.css$",
-      func: require("./engines/sass")
-    },
-    {
-      rule: "\\.jpl$|\\.html.js$|\\.tpl.js$",
-      func: require("./engines/jpl")
-    }
-  ],
+  engines: [],
   addEngine: function (rule, func) {
     if (rule && typeof func == "function") {
       this.engines.push({
@@ -192,7 +179,7 @@ FlexCombo.prototype = {
     }
   },
   buildRequestOption: function (url) {
-    if (this.req.headers["x-via"] == "flex-combo") {
+    if (this.req.headers["x-broker"] == "flex-combo") {
       return false;
     }
 
@@ -211,6 +198,10 @@ FlexCombo.prototype = {
       reqHostIP = reqHostName;
     }
 
+    if (reqHostIP == reqHostName && this.req.url.match(/favicon\.ico$/)) {
+      return false;
+    }
+
     var requestOption = {
       protocol: protocol,
       host: reqHostIP,
@@ -218,7 +209,7 @@ FlexCombo.prototype = {
       path: url,
       method: this.req.method || "GET",
       headers: {
-        "x-via": "flex-combo",
+        "x-broker": "flex-combo",
         host: reqHostName
       }
     };
@@ -391,4 +382,4 @@ FlexCombo.prototype = {
   }
 };
 
-exports = module.exports = FlexCombo;
+module.exports = FlexCombo;
