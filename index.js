@@ -49,6 +49,7 @@ exports.engine = function(param, dir) {
   var through = require("through2");
   var pathLib = require("path");
   var fcInst = new FlexCombo(param, dir);
+  fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {
     var self = this;
@@ -67,7 +68,10 @@ exports.engine = function(param, dir) {
 
     var url = file.path.replace(pathLib.join(process.cwd(), fcInst.param.rootdir), '');
     fcInst.engineHandler(url, function() {
-      file.contents = fcInst.result[url];
+      var buff = fcInst.result[url];
+      if (buff) {
+        file.contents = buff;
+      }
       self.push(file);
       cb();
     });
