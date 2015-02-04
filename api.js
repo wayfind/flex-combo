@@ -217,12 +217,12 @@ FlexCombo.prototype = {
 
     return requestOption;
   },
-  engineHandler: function (_url, next) {
-    var absPath = Helper.getRealPath(_url, this.param.filter, this.param.urls, this.param.traceRule);
+  engineHandler: function (_url, filteredURL, next) {
+    var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
     var matchedIndex = -1;
     for (var i = this.engines.length - 1, matched = null, matchedNum = -1; i >= 0; i--) {
-      matched = _url.match(new RegExp(this.engines[i].rule));
+      matched = filteredURL.match(new RegExp(this.engines[i].rule));
       if (matched && matched[0].length > matchedNum && typeof this.engines[i].func == "function") {
         matchedNum = matched[0].length;
         matchedIndex = i;
@@ -232,11 +232,11 @@ FlexCombo.prototype = {
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
       var self = this;
-      engine.func(absPath, _url, this.param, function (e, result, realPath) {
+      engine.func(absPath, filteredURL, this.param, function (e, result, realPath) {
         if (!e) {
           self.result[_url] = self.convert(result, _url);
-          if (("Engine " + _url + (realPath || absPath)).match(self.param.traceRule)) {
-            Helper.Log.engine(_url, realPath || absPath);
+          if (("Engine " + filteredURL + (realPath || absPath)).match(self.param.traceRule)) {
+            Helper.Log.engine(filteredURL, realPath || absPath);
           }
         }
         next();
@@ -246,8 +246,8 @@ FlexCombo.prototype = {
       next();
     }
   },
-  staticHandler: function (_url, next) {
-    var absPath = Helper.getRealPath(_url, this.param.filter, this.param.urls, false);
+  staticHandler: function (_url, filteredURL, next) {
+    var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
     if (!this.result[_url] && fsLib.existsSync(absPath)) {
       var buff = fsLib.readFileSync(absPath);
@@ -257,8 +257,8 @@ FlexCombo.prototype = {
       }
 
       this.result[_url] = buff;
-      if (("Local " + _url + absPath).match(this.param.traceRule)) {
-        Helper.Log.local(_url, absPath);
+      if (("Local " + filteredURL + absPath).match(this.param.traceRule)) {
+        Helper.Log.local(filteredURL, absPath);
       }
     }
 
@@ -338,16 +338,18 @@ FlexCombo.prototype = {
         Helper.Log.request(this.HOST, files);
       }
 
+      var filteredURL;
       for (var i = 0; i < FLen; i++) {
+        filteredURL = Helper.filteredUrl(files[i], this.param.filter, this.param.traceRule);
         Q.push(
           (function (i) {
             return function (cb) {
-              self.engineHandler(files[i], cb);
+              self.engineHandler(files[i], filteredURL, cb);
             }
           })(i),
           (function (i) {
             return function (cb) {
-              self.staticHandler(files[i], cb);
+              self.staticHandler(files[i], filteredURL, cb);
             }
           })(i),
           (function (i) {
