@@ -217,7 +217,8 @@ FlexCombo.prototype = {
 
     return requestOption;
   },
-  engineHandler: function (_url, filteredURL, next) {
+  engineHandler: function (_url, next) {
+    var filteredURL = Helper.filteredUrl(_url, this.param.filter, this.param.traceRule);
     var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
     var matchedIndex = -1;
@@ -246,7 +247,8 @@ FlexCombo.prototype = {
       next();
     }
   },
-  staticHandler: function (_url, filteredURL, next) {
+  staticHandler: function (_url, next) {
+    var filteredURL = Helper.filteredUrl(_url, this.param.filter, false);
     var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
     if (!this.result[_url] && fsLib.existsSync(absPath)) {
@@ -338,18 +340,16 @@ FlexCombo.prototype = {
         Helper.Log.request(this.HOST, files);
       }
 
-      var filteredURL;
       for (var i = 0; i < FLen; i++) {
-        filteredURL = Helper.filteredUrl(files[i], this.param.filter, this.param.traceRule);
         Q.push(
           (function (i) {
             return function (cb) {
-              self.engineHandler(files[i], filteredURL, cb);
+              self.engineHandler(files[i], cb);
             }
           })(i),
           (function (i) {
             return function (cb) {
-              self.staticHandler(files[i], filteredURL, cb);
+              self.staticHandler(files[i], cb);
             }
           })(i),
           (function (i) {
