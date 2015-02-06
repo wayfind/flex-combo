@@ -314,7 +314,7 @@ FlexCombo.prototype = {
       }
       else {
         if (_url.match(/favicon\.ico$/)) {
-          this.res.end(fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico")));
+          this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico"));
         }
         else {
           this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
