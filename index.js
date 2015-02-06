@@ -76,7 +76,7 @@ exports.engine = function(param, dir) {
     }
 
     var url = file.path.replace(pathLib.join(process.cwd(), fcInst.param.rootdir), '');
-    fcInst.engineHandler(url, url, function() {
+    fcInst.engineHandler(url, function() {
       var buff = fcInst.result[url];
       if (buff) {
         file.contents = buff;
