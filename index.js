@@ -2,11 +2,11 @@
  * 主入口
  * 通过require("flex-combo")
  * */
-var FlexCombo = require("./api");
+var API = require("./api");
 var DAC = require("dac");
-FlexCombo.prototype.addEngine("\\.less$|\\.less\\.css$", DAC.less);
-FlexCombo.prototype.addEngine("\\.jpl$", DAC.jpl);
-FlexCombo.prototype.addEngine("\\.html.js", function(htmlfile, _url, param, cb) {
+API.prototype.addEngine("\\.less$|\\.less\\.css$", DAC.less);
+API.prototype.addEngine("\\.jpl$", DAC.jpl);
+API.prototype.addEngine("\\.html.js", function(htmlfile, _url, param, cb) {
   DAC.jpl(htmlfile, _url, param, function(err, result, filepath) {
     var fs = require("fs");
     fs.writeFile(htmlfile, result, function() {
@@ -18,7 +18,7 @@ FlexCombo.prototype.addEngine("\\.html.js", function(htmlfile, _url, param, cb) 
 
 exports = module.exports = function (param, dir) {
   return function () {
-    var fcInst = new FlexCombo(param, dir);
+    var fcInst = new API(param, dir);
 
     var req, res, next;
     switch (arguments.length) {
@@ -52,12 +52,13 @@ exports = module.exports = function (param, dir) {
   }
 };
 
+exports.API = API;
 exports.engine = function(param, dir) {
   param = param || {};
 
   var through = require("through2");
   var pathLib = require("path");
-  var fcInst = new FlexCombo(param, dir);
+  var fcInst = new API(param, dir);
   fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {

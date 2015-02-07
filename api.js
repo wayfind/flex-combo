@@ -50,7 +50,7 @@ function FlexCombo(param, dir) {
     }
     this.param = Helper.merge(true, this.param, confJSON, param || {});
 
-    if (confJSON.filter) {
+    if (confJSON.filter || param.filter) {
       this.param.filter = Helper.merge(confJSON.filter, param.filter || {});
     }
 
