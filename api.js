@@ -115,8 +115,9 @@ FlexCombo.prototype = {
     var suffix = ["\\.jpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
-      suffix = supportedFile.split('|');
+      suffix = suffix.concat(supportedFile.split('|'));
     }
+
     var engines = this.param.engine || {};
     for (var k in engines) {
       suffix.push(k);
@@ -125,6 +126,10 @@ FlexCombo.prototype = {
       }
       this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])));
     }
+
+    suffix = suffix.filter(function(elem, pos) {
+      return suffix.indexOf(elem) == pos;
+    });
 
     return this.URL.match(new RegExp(suffix.join('|'))) ? true : false;
   },
