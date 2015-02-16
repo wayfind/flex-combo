@@ -51,7 +51,7 @@ function FlexCombo(param, dir) {
     this.param = Helper.merge(true, this.param, confJSON, param || {});
 
     if (confJSON.filter || param.filter) {
-      this.param.filter = Helper.merge(confJSON.filter, param.filter || {});
+      this.param.filter = Helper.merge(confJSON.filter || {}, param.filter || {});
     }
 
     if (this.param.cache) {
@@ -345,28 +345,30 @@ FlexCombo.prototype = {
         Helper.Log.request(this.HOST, files);
       }
 
+      var tmpFile;
       for (var i = 0; i < FLen; i++) {
+        tmpFile = files[i];
         Q.push(
-          (function (i) {
+          (function (f) {
             return function (cb) {
-              self.engineHandler(files[i], cb);
+              self.engineHandler(f, cb);
             }
-          })(i),
-          (function (i) {
+          })(tmpFile),
+          (function (f) {
             return function (cb) {
-              self.staticHandler(files[i], cb);
+              self.staticHandler(f, cb);
             }
-          })(i),
-          (function (i) {
+          })(tmpFile),
+          (function (f) {
             return function (cb) {
-              self.cacheHandler(files[i], cb);
+              self.cacheHandler(f, cb);
             }
-          })(i),
-          (function (i) {
+          })(tmpFile),
+          (function (f) {
             return function (cb) {
-              self.fetchHandler(files[i], cb);
+              self.fetchHandler(f, cb);
             }
-          })(i)
+          })(tmpFile)
         );
       }
 
