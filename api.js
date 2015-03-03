@@ -213,6 +213,7 @@ FlexCombo.prototype = {
       port: reqPort,
       path: url,
       method: this.req.method || "GET",
+      rejectUnauthorized: false,
       headers: {
         "x-broker": "flex-combo",
         host: reqHostName
