@@ -4,21 +4,23 @@
  * */
 var API = require("./api");
 var DAC = require("dac");
-API.prototype.addEngine("\\.less$|\\.less\\.css$", DAC.less);
-API.prototype.addEngine("\\.jpl$", DAC.jpl);
-API.prototype.addEngine("\\.html.js", function(htmlfile, _url, param, cb) {
-  DAC.jpl(htmlfile, _url, param, function(err, result, filepath) {
+
+var fcInst = new API();
+fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less);
+fcInst.addEngine("\\.jpl$", DAC.jpl);
+fcInst.addEngine("\\.html.js", function(htmlfile, _url, param, cb) {
+  DAC.jpl(htmlfile, _url, param, function(err, result, filepath, MIME) {
     var fs = require("fs");
     fs.writeFile(htmlfile, result, function() {
       fs.chmod(htmlfile, 0777);
     });
-    cb(err, result, filepath);
+    cb(err, result, filepath, MIME);
   });
 });
 
 exports = module.exports = function (param, dir) {
   return function () {
-    var fcInst = new API(param, dir);
+    fcInst = new API(param, dir);
 
     var req, res, next;
     switch (arguments.length) {
@@ -58,7 +60,8 @@ exports.engine = function(param, dir) {
 
   var through = require("through2");
   var pathLib = require("path");
-  var fcInst = new API(param, dir);
+
+  fcInst = new API(param, dir);
   fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {
