@@ -125,7 +125,10 @@ FlexCombo.prototype = {
       if (this.URL.match(new RegExp(k))) {
         this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(engines[k]);
       }
-      this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])));
+      var js = pathLib.join(process.cwd(), engines[k]);
+      if (fsLib.existsSync(js)) {
+        this.addEngine(k, require(js));
+      }
     }
     for (var i = 0, len = this.engines.length; i < len; i++) {
       suffix.push(this.engines[i].rule);
