@@ -239,7 +239,7 @@ FlexCombo.prototype = {
           this.MIME = MIME;
 
           this.result[_url] = this.convert(result, _url);
-          if (this.param.traceRule.test("Engine " + filteredURL + (realPath || absPath))) {
+          if (this.param.traceRule && this.param.traceRule.test("Engine " + filteredURL + (realPath || absPath))) {
             Helper.Log.engine(filteredURL, realPath || absPath);
           }
         }
@@ -263,7 +263,7 @@ FlexCombo.prototype = {
         }
 
         this.result[_url] = buff;
-        if (this.param.traceRule.test("Local " + filteredURL + absPath)) {
+        if (this.param.traceRule && this.param.traceRule.test("Local " + filteredURL + absPath)) {
           Helper.Log.local(filteredURL, absPath);
         }
       }
@@ -279,7 +279,7 @@ FlexCombo.prototype = {
 
     if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
-      if (this.param.traceRule.test("Cache " + _url + absPath)) {
+      if (this.param.traceRule && this.param.traceRule.test("Cache " + _url + absPath)) {
         Helper.Log.cache(_url, absPath);
       }
     }
@@ -307,7 +307,7 @@ FlexCombo.prototype = {
                 var buff = Helper.joinBuffer(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
-                if (self.param.traceRule.test("Remote " + _url)) {
+                if (self.param.traceRule && self.param.traceRule.test("Remote " + _url)) {
                   Helper.Log.remote(_url, requestOption);
                 }
                 next();
@@ -342,7 +342,7 @@ FlexCombo.prototype = {
       var self = this;
       var Q = [];
 
-      if (this.param.traceRule.test("Request " + this.HOST + files.join(' '))) {
+      if (this.param.traceRule && this.param.traceRule.test("Request " + this.HOST + files.join(' '))) {
         Helper.Log.request(this.HOST, files);
       }
 
@@ -386,7 +386,7 @@ FlexCombo.prototype = {
           res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
         }
         var resurl = this.HOST + req.url;
-        if (this.param.traceRule.test("Response " + resurl)) {
+        if (this.param.traceRule && this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
         }
         res.end();
