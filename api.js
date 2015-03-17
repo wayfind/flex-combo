@@ -3,8 +3,10 @@ var pathLib = require("path");
 var fsLib = require("fs");
 var mime = require("mime");
 var async = require("async");
-var isUtf8 = require("is-utf8");
-var iconv = require("iconv-lite");
+var DAC = require("dac");
+var isUtf8 = DAC.isUtf8;
+var iconv = DAC.iconv;
+
 var Helper = require("./lib/util");
 var ALProtocol = {
   "http:": require("http"),
@@ -97,11 +99,12 @@ FlexCombo.prototype = {
     }
   },
   engines: [],
-  addEngine: function (rule, func) {
+  addEngine: function (rule, func, p) {
     if (rule && typeof func == "function") {
       FlexCombo.prototype.engines.push({
         rule: rule,
-        func: func
+        func: func,
+        path: p
       });
     }
   },
@@ -122,12 +125,12 @@ FlexCombo.prototype = {
     var engines = this.param.engine || {};
     for (var k in engines) {
       suffix.push(k);
-      if (this.URL.match(new RegExp(k))) {
+      if (new RegExp(k).test(this.URL)) {
         this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(engines[k]);
       }
       var js = pathLib.join(process.cwd(), engines[k]);
       if (fsLib.existsSync(js)) {
-        this.addEngine(k, require(js));
+        this.addEngine(k, require(js), engines[k]);
       }
     }
     for (var i = 0, len = this.engines.length; i < len; i++) {
@@ -196,7 +199,7 @@ FlexCombo.prototype = {
       reqHostIP = reqHostName;
     }
 
-    if (reqHostIP == reqHostName && this.req.url.match(/favicon\.ico$/)) {
+    if (reqHostIP == reqHostName && /favicon\.ico$/.test(this.req.url)) {
       return false;
     }
 
@@ -231,12 +234,12 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      engine.func(absPath, filteredURL, this.param, function (e, result, realPath, MIME) {
+      engine.func(absPath, filteredURL, this.param[engine.path] || {}, function (e, result, realPath, MIME) {
         if (!e) {
           this.MIME = MIME;
 
           this.result[_url] = this.convert(result, _url);
-          if (("Engine " + filteredURL + (realPath || absPath)).match(this.param.traceRule)) {
+          if (this.param.traceRule.test("Engine " + filteredURL + (realPath || absPath))) {
             Helper.Log.engine(filteredURL, realPath || absPath);
           }
         }
@@ -251,16 +254,21 @@ FlexCombo.prototype = {
     var filteredURL = Helper.filteredUrl(_url, this.param.filter, false);
     var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
-    if (!this.result[_url] && fsLib.existsSync(absPath)) {
-      var buff = fsLib.readFileSync(absPath);
+    if (!this.result[_url]) {
+      if (fsLib.existsSync(absPath)) {
+        var buff = fsLib.readFileSync(absPath);
 
-      if (!Helper.isBinFile(absPath)) {
-        buff = this.convert(buff, _url);
+        if (!Helper.isBinFile(absPath)) {
+          buff = this.convert(buff, _url);
+        }
+
+        this.result[_url] = buff;
+        if (this.param.traceRule.test("Local " + filteredURL + absPath)) {
+          Helper.Log.local(filteredURL, absPath);
+        }
       }
-
-      this.result[_url] = buff;
-      if (("Local " + filteredURL + absPath).match(this.param.traceRule)) {
-        Helper.Log.local(filteredURL, absPath);
+      else {
+        Helper.Log.warn(absPath, "Not Found!");
       }
     }
 
@@ -271,7 +279,7 @@ FlexCombo.prototype = {
 
     if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
-      if (("Cache " + _url + absPath).match(this.param.traceRule)) {
+      if (this.param.traceRule.test("Cache " + _url + absPath)) {
         Helper.Log.cache(_url, absPath);
       }
     }
@@ -299,7 +307,7 @@ FlexCombo.prototype = {
                 var buff = Helper.joinBuffer(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
-                if (("Remote " + _url).match(self.param.traceRule)) {
+                if (self.param.traceRule.test("Remote " + _url)) {
                   Helper.Log.remote(_url, requestOption);
                 }
                 next();
@@ -313,7 +321,7 @@ FlexCombo.prototype = {
           .end();
       }
       else {
-        if (_url.match(/favicon\.ico$/)) {
+        if (/favicon\.ico$/.test(_url)) {
           this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico"));
         }
         else {
@@ -334,7 +342,7 @@ FlexCombo.prototype = {
       var self = this;
       var Q = [];
 
-      if (("Request " + this.HOST + files.join(' ')).match(this.param.traceRule)) {
+      if (this.param.traceRule.test("Request " + this.HOST + files.join(' '))) {
         Helper.Log.request(this.HOST, files);
       }
 
@@ -378,7 +386,7 @@ FlexCombo.prototype = {
           res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
         }
         var resurl = this.HOST + req.url;
-        if (("Response " + resurl).match(this.param.traceRule)) {
+        if (this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
         }
         res.end();
