@@ -3,8 +3,10 @@ var pathLib = require("path");
 var fsLib = require("fs");
 var mime = require("mime");
 var async = require("async");
-var isUtf8 = require("is-utf8");
-var iconv = require("iconv-lite");
+var DAC = require("dac");
+var isUtf8 = DAC.isUtf8;
+var iconv = DAC.iconv;
+
 var Helper = require("./lib/util");
 var ALProtocol = {
   "http:": require("http"),
@@ -14,6 +16,7 @@ var ALProtocol = {
 function FlexCombo(param, dir) {
   this.HOST = null;
   this.URL = null;
+  this.MIME = null;
   this.req = null;
   this.res = null;
   this.param = Helper.clone(require("./lib/param"));
@@ -96,11 +99,12 @@ FlexCombo.prototype = {
     }
   },
   engines: [],
-  addEngine: function (rule, func) {
+  addEngine: function (rule, func, p) {
     if (rule && typeof func == "function") {
-      this.engines.push({
+      FlexCombo.prototype.engines.push({
         rule: rule,
-        func: func
+        func: func,
+        path: p
       });
     }
   },
@@ -121,31 +125,23 @@ FlexCombo.prototype = {
     var engines = this.param.engine || {};
     for (var k in engines) {
       suffix.push(k);
-      if (this.URL.match(new RegExp(k))) {
+      if (new RegExp(k).test(this.URL)) {
         this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(engines[k]);
       }
-      this.addEngine(k, require(pathLib.join(process.cwd(), engines[k])));
+      var js = pathLib.join(process.cwd(), engines[k]);
+      if (fsLib.existsSync(js)) {
+        this.addEngine(k, require(js), engines[k]);
+      }
+    }
+    for (var i = 0, len = this.engines.length; i < len; i++) {
+      suffix.push(this.engines[i].rule);
     }
 
-    suffix = suffix.filter(function(elem, pos) {
+    suffix = suffix.filter(function (elem, pos) {
       return suffix.indexOf(elem) == pos;
     });
 
     return this.URL.match(new RegExp(suffix.join('|'))) ? true : false;
-  },
-  header: function () {
-    var U4M = this.URL;
-    if (U4M.match(/\.less$|\.scss$|\.sass$/)) {
-      U4M += ".css";
-    }
-    else if (U4M.match(/\.jpl$/)) {
-      U4M += ".js";
-    }
-    this.res.writeHead(200, {
-      "Access-Control-Allow-Origin": '*',
-      "Content-Type": mime.lookup(U4M) + (Helper.isBinFile(U4M) ? '' : ";charset=" + this.param.charset),
-      "X-MiddleWare": "flex-combo"
-    });
   },
   convert: function (content, _url) {
     var buff = content;
@@ -188,7 +184,7 @@ FlexCombo.prototype = {
       return false;
     }
 
-    var protocol = (this.req.protocol || "http") + ':';
+    var protocol = (this.req.protocol || "https") + ':';
     var H = this.req.headers.host.split(':');
     var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
     var reqHostName = H[0];
@@ -203,7 +199,7 @@ FlexCombo.prototype = {
       reqHostIP = reqHostName;
     }
 
-    if (reqHostIP == reqHostName && this.req.url.match(/favicon\.ico$/)) {
+    if (reqHostIP == reqHostName && /favicon\.ico$/.test(this.req.url)) {
       return false;
     }
 
@@ -213,6 +209,7 @@ FlexCombo.prototype = {
       port: reqPort,
       path: url,
       method: this.req.method || "GET",
+      rejectUnauthorized: false,
       headers: {
         "x-broker": "flex-combo",
         host: reqHostName
@@ -237,16 +234,17 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      var self = this;
-      engine.func(absPath, filteredURL, this.param, function (e, result, realPath) {
+      engine.func(absPath, filteredURL, this.param[engine.path] || {}, function (e, result, realPath, MIME) {
         if (!e) {
-          self.result[_url] = self.convert(result, _url);
-          if (("Engine " + filteredURL + (realPath || absPath)).match(self.param.traceRule)) {
+          this.MIME = MIME;
+
+          this.result[_url] = this.convert(result, _url);
+          if (this.param.traceRule && this.param.traceRule.test("Engine " + filteredURL + (realPath || absPath))) {
             Helper.Log.engine(filteredURL, realPath || absPath);
           }
         }
         next();
-      });
+      }.bind(this));
     }
     else {
       next();
@@ -256,16 +254,21 @@ FlexCombo.prototype = {
     var filteredURL = Helper.filteredUrl(_url, this.param.filter, false);
     var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
 
-    if (!this.result[_url] && fsLib.existsSync(absPath)) {
-      var buff = fsLib.readFileSync(absPath);
+    if (!this.result[_url]) {
+      if (fsLib.existsSync(absPath)) {
+        var buff = fsLib.readFileSync(absPath);
 
-      if (!Helper.isBinFile(absPath)) {
-        buff = this.convert(buff, _url);
+        if (!Helper.isBinFile(absPath)) {
+          buff = this.convert(buff, _url);
+        }
+
+        this.result[_url] = buff;
+        if (this.param.traceRule && this.param.traceRule.test("Local " + filteredURL + absPath)) {
+          Helper.Log.local(filteredURL, absPath);
+        }
       }
-
-      this.result[_url] = buff;
-      if (("Local " + filteredURL + absPath).match(this.param.traceRule)) {
-        Helper.Log.local(filteredURL, absPath);
+      else {
+        Helper.Log.warn(absPath, "Not Found!");
       }
     }
 
@@ -276,7 +279,7 @@ FlexCombo.prototype = {
 
     if (absPath && !this.result[_url] && fsLib.existsSync(absPath)) {
       this.result[_url] = fsLib.readFileSync(absPath);
-      if (("Cache " + _url + absPath).match(this.param.traceRule)) {
+      if (this.param.traceRule && this.param.traceRule.test("Cache " + _url + absPath)) {
         Helper.Log.cache(_url, absPath);
       }
     }
@@ -304,7 +307,7 @@ FlexCombo.prototype = {
                 var buff = Helper.joinBuffer(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
-                if (("Remote " + _url).match(self.param.traceRule)) {
+                if (self.param.traceRule && self.param.traceRule.test("Remote " + _url)) {
                   Helper.Log.remote(_url, requestOption);
                 }
                 next();
@@ -318,7 +321,7 @@ FlexCombo.prototype = {
           .end();
       }
       else {
-        if (_url.match(/favicon\.ico$/)) {
+        if (/favicon\.ico$/.test(_url)) {
           this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico"));
         }
         else {
@@ -334,14 +337,12 @@ FlexCombo.prototype = {
   },
   handle: function (req, res, next) {
     if (this.init(req, res)) {
-      this.header();
-
       var files = this.parser(this.URL);
       var FLen = files.length;
       var self = this;
       var Q = [];
 
-      if (("Request " + this.HOST + files.join(' ')).match(this.param.traceRule)) {
+      if (this.param.traceRule && this.param.traceRule.test("Request " + this.HOST + files.join(' '))) {
         Helper.Log.request(this.HOST, files);
       }
 
@@ -373,17 +374,23 @@ FlexCombo.prototype = {
       }
 
       async.series(Q, function () {
+        this.res.writeHead(200, {
+          "Access-Control-Allow-Origin": '*',
+          "Content-Type": (this.MIME || mime.lookup(this.URL)) + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
+          "X-MiddleWare": "flex-combo"
+        });
+
         var buff;
         for (var i = 0; i < FLen; i++) {
-          buff = self.result[files[i]];
+          buff = this.result[files[i]];
           res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
         }
-        var resurl = self.HOST + req.url;
-        if (("Response " + resurl).match(self.param.traceRule)) {
+        var resurl = this.HOST + req.url;
+        if (this.param.traceRule && this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
         }
         res.end();
-      });
+      }.bind(this));
     }
     else {
       next();
