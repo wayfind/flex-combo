@@ -115,6 +115,7 @@ FlexCombo.prototype = {
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
     this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
+    this.MIME = mime.lookup(this.URL);
 
     var suffix = ["\\.jpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
@@ -149,21 +150,17 @@ FlexCombo.prototype = {
       buff = new Buffer(content);
     }
 
-    var charset = isUtf8(buff) ? "utf-8" : "gbk";
-    var outputCharset = (this.param.charset).toLowerCase();
+    var str = iconv.decode(buff, isUtf8(buff) ? "utf-8" : "gbk");
+    if (this.MIME == "application/javascript") {
+      str = ';' + str;
+    }
 
+    var outputCharset = (this.param.charset).toLowerCase();
     if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
       outputCharset = this.param.urlBasedCharset[_url];
     }
 
-    if (charset == outputCharset) {
-      return buff;
-    }
-
-    return iconv.encode(
-      (typeof buff == "string") ? buff : iconv.decode(buff, charset),
-      outputCharset
-    );
+    return iconv.encode(str, outputCharset);
   },
   getCacheFilePath: function (_url) {
     if (this.cacheDir) {
@@ -376,7 +373,7 @@ FlexCombo.prototype = {
       async.series(Q, function () {
         this.res.writeHead(200, {
           "Access-Control-Allow-Origin": '*',
-          "Content-Type": (this.MIME || mime.lookup(this.URL)) + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
+          "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
           "X-MiddleWare": "flex-combo"
         });
 
