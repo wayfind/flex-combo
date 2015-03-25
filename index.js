@@ -6,6 +6,7 @@ var API = require("./api");
 var DAC = require("dac");
 var pathLib = require("path");
 var fsLib = require("fs");
+var Helper = require("./lib/util");
 
 try {
   var updateNotifier = require("update-notifier");
@@ -31,42 +32,60 @@ fcInst.addEngine("\\.html\\.js$", function (htmlfile, _url, param, cb) {
 }, "dac/tpl");
 
 function transfer(dir, key, except) {
-  var confFile;
-  if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
-    confFile = pathLib.join(dir, "config.json");
+  if (dir) {
+    var confFile;
+    if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
+      confFile = pathLib.join(dir, "config.json");
+    }
+    else {
+      confFile = pathLib.join(process.cwd(), dir || ".config", pathLib.basename(__dirname) + ".json");
+    }
+
+    var confDir = pathLib.dirname(confFile);
+    if (!fsLib.existsSync(confDir)) {
+      Helper.mkdirPSync(confDir);
+      fsLib.chmod(confDir, 0777);
+    }
+
+    if (!fsLib.existsSync(confFile)) {
+      fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
+      fsLib.chmod(confFile, 0777);
+    }
+
+    var userParam = require(confFile);
+    if (key && typeof userParam[key] == "undefined") {
+      var param = require("./lib/param");
+      var keys = Object.keys(param[key]);
+
+      userParam[key] = {};
+      except = except || [];
+
+      keys.map(function (i) {
+        if (except.indexOf(i) == -1 && typeof userParam[i] != "undefined") {
+          userParam[key][i] = userParam[i];
+          delete userParam[i];
+        }
+        else {
+          userParam[key][i] = param[key][i];
+        }
+      });
+
+      fsLib.writeFileSync(confFile, JSON.stringify(userParam, null, 2), {encoding: "utf-8"});
+      fsLib.chmod(confFile, 0777);
+    }
+
+    return confFile;
   }
   else {
-    confFile = pathLib.join(process.cwd(), dir || ".config", pathLib.basename(__dirname) + ".json");
-  }
-
-  var userParam = require(confFile);
-  if (typeof userParam[key] == "undefined") {
-    var param = require("./lib/param");
-    var keys = Object.keys(param[key]);
-
-    userParam[key] = {};
-    except = except || [];
-
-    keys.map(function(i) {
-      if (except.indexOf(i) == -1 && typeof userParam[i] != "undefined") {
-        userParam[key][i] = userParam[i];
-        delete userParam[i];
-      }
-      else {
-        userParam[key][i] = param[key][i];
-      }
-    });
-
-    fsLib.writeFileSync(confFile, JSON.stringify(userParam, null, 2), {encoding: "utf-8"});
-    fsLib.chmod(confFile, 0777);
+    return null;
   }
 }
 
 exports = module.exports = function (param, dir) {
-  transfer(dir, "dac/tpl", ["filter"]);
+  var confFile = transfer(dir, "dac/tpl", ["filter"]);
 
   return function () {
-    fcInst = new API(param, dir);
+    fcInst = new API(param, confFile);
 
     var req, res, next;
     switch (arguments.length) {
@@ -102,14 +121,12 @@ exports = module.exports = function (param, dir) {
 
 exports.API = API;
 exports.engine = function (param, dir) {
-  transfer(dir, "dac/tpl", ["filter"]);
-
   param = param || {};
 
   var through = require("through2");
   var pathLib = require("path");
 
-  fcInst = new API(param, dir);
+  fcInst = new API(param, transfer(dir, "dac/tpl", ["filter"]));
   fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {

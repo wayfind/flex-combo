@@ -13,36 +13,17 @@ var ALProtocol = {
   "https:": require("https")
 };
 
-function FlexCombo(param, dir) {
+function FlexCombo(param, confFile) {
   this.HOST = null;
   this.URL = null;
   this.MIME = null;
   this.req = null;
   this.res = null;
   this.param = Helper.clone(require("./lib/param"));
-  this.cacheDir = null;
+  this.cacheDir = pathLib.join(process.cwd(), ".cache");
   this.result = {};
 
-  if (dir) {
-    var confFile = '';
-    if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
-      confFile = pathLib.join(dir, "config.json");
-    }
-    else {
-      confFile = pathLib.join(process.cwd(), dir || ".config", pathLib.basename(__dirname) + ".json");
-    }
-
-    var confDir = pathLib.dirname(confFile);
-    if (!fsLib.existsSync(confDir)) {
-      Helper.mkdirPSync(confDir);
-      fsLib.chmod(confDir, 0777);
-    }
-
-    if (!fsLib.existsSync(confFile)) {
-      fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
-      fsLib.chmod(confFile, 0777);
-    }
-
+  if (confFile) {
     var confJSON = {};
     try {
       confJSON = JSON.parse(fsLib.readFileSync(confFile));
@@ -56,14 +37,6 @@ function FlexCombo(param, dir) {
     if (confJSON.filter || param.filter) {
       this.param.filter = Helper.merge(confJSON.filter || {}, param.filter || {});
     }
-
-    if (this.param.cache) {
-      this.cacheDir = pathLib.join(confDir, "../.cache");
-      if (!fsLib.existsSync(this.cacheDir)) {
-        Helper.mkdirPSync(this.cacheDir);
-        fsLib.chmod(this.cacheDir, 0777);
-      }
-    }
   }
   else {
     this.param = Helper.merge(true, this.param, param || {});
@@ -71,6 +44,11 @@ function FlexCombo(param, dir) {
 
   if (!this.param.urls['/']) {
     this.param.urls['/'] = this.param.rootdir || "src";
+  }
+
+  if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
+    Helper.mkdirPSync(this.cacheDir);
+    fsLib.chmod(this.cacheDir, 0777);
   }
 
   this.param.traceRule = new RegExp(this.param.traceRule, 'i');
