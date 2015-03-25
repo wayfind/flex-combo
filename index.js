@@ -10,18 +10,21 @@ try {
   var pkg = require(__dirname + "/package.json");
   updateNotifier({pkg: pkg}).notify();
 }
-catch (e) {}
+catch (e) {
+}
 
 var fcInst = new API();
 fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
 fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
-fcInst.addEngine("\\.html\\.js$", function(htmlfile, _url, param, cb) {
-  DAC.tpl(htmlfile, _url, param, function(err, result, filepath, MIME) {
-    var fs = require("fs");
-    fs.writeFile(htmlfile, result, function() {
-      fs.chmod(htmlfile, 0777);
-    });
-    cb(err, result, filepath, MIME);
+fcInst.addEngine("\\.html\\.js$", function (htmlfile, _url, param, cb) {
+  DAC.tpl(htmlfile, _url, param, function (err, result, filepath, MIME) {
+    if (typeof result != "undefined") {
+      var fs = require("fs");
+      fs.writeFile(htmlfile, result, function () {
+        fs.chmod(htmlfile, 0777);
+      });
+    }
+    cb(err, result || '', filepath, MIME);
   });
 }, "dac/tpl");
 
@@ -62,7 +65,7 @@ exports = module.exports = function (param, dir) {
 };
 
 exports.API = API;
-exports.engine = function(param, dir) {
+exports.engine = function (param, dir) {
   param = param || {};
 
   var through = require("through2");
@@ -87,7 +90,7 @@ exports.engine = function(param, dir) {
     }
 
     var url = file.path.replace(pathLib.join(process.cwd(), fcInst.param.rootdir), '');
-    fcInst.engineHandler(url, function() {
+    fcInst.engineHandler(url, function () {
       var buff = fcInst.result[url];
       if (buff) {
         file.contents = buff;
