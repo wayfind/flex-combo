@@ -20,6 +20,7 @@ function FlexCombo(param, confFile) {
   this.req = null;
   this.res = null;
   this.param = Helper.clone(require("./lib/param"));
+  this.query = {};
   this.cacheDir = pathLib.join(process.cwd(), ".cache");
   this.result = {};
 
@@ -64,7 +65,7 @@ FlexCombo.prototype = {
       var file = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
-        return pathLib.join(base, i).replace(/\\|\/{1,}/g, '/');
+        return pathLib.join(base, i);
       });
     }
     else {
@@ -91,8 +92,22 @@ FlexCombo.prototype = {
     this.res = res;
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
+
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
+    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, function (all, $1, pos, input) {
+      input.slice(pos + $1.length + 1).split('&').map(function (i) {
+        var matched = i.match(/(.+)=(.{0,})/);
+        if (matched) {
+          this.query[matched[1]] =
+            (matched[2] == '' || isNaN(matched[2]))
+              ? matched[2]
+              : matched[2] - 0;
+        }
+      }.bind(this));
+
+      return $1;
+    }.bind(this));
+
     this.MIME = mime.lookup(this.URL);
 
     var suffix = ["\\.jpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
@@ -209,7 +224,12 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      engine.func(absPath, filteredURL, this.param[engine.path] || {}, function (e, result, realPath, MIME) {
+      this.query = Helper.merge(true, this.param[engine.path] || {}, this.query);
+
+      Helper.Log.color("blue", "\nParams Applied:");
+      Helper.Log.color("blue", JSON.stringify(this.query, null, 2));
+
+      engine.func(absPath, filteredURL, this.query, function (e, result, realPath, MIME) {
         if (!e) {
           this.MIME = MIME;
 
