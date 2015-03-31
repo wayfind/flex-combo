@@ -110,7 +110,7 @@ FlexCombo.prototype = {
 
     this.MIME = mime.lookup(this.URL);
 
-    var suffix = ["\\.jpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
+    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
       suffix = suffix.concat(supportedFile.split('|'));
@@ -137,23 +137,24 @@ FlexCombo.prototype = {
 
     return this.URL.match(new RegExp(suffix.join('|'))) ? true : false;
   },
-  convert: function (content, _url) {
-    var buff = content;
-    if (typeof content != "object" || !Buffer.isBuffer(content)) {
-      buff = new Buffer(content);
+  convert: function (buff, _url) {
+    if (!Buffer.isBuffer(buff)) {
+      buff = new Buffer(buff);
     }
 
-    var str = iconv.decode(buff, isUtf8(buff) ? "utf-8" : "gbk");
-    if (this.MIME == "application/javascript") {
-      str = ';' + str;
-    }
+    var selfCharset = isUtf8(buff) ? "utf-8" : "gbk";
 
-    var outputCharset = (this.param.charset).toLowerCase();
+    var outputCharset = (this.param.charset || "utf-8").toLowerCase();
     if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
       outputCharset = this.param.urlBasedCharset[_url];
     }
 
-    return iconv.encode(str, outputCharset);
+    if (selfCharset == outputCharset) {
+      return buff;
+    }
+    else {
+      return iconv.encode(iconv.decode(buff, selfCharset), outputCharset);
+    }
   },
   getCacheFilePath: function (_url) {
     if (this.cacheDir) {
@@ -178,19 +179,12 @@ FlexCombo.prototype = {
     var H = this.req.headers.host.split(':');
     var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
     var reqHostName = H[0];
-    var reqHostIP;
+    var reqHostIP = reqHostName;
     if (this.param.hostIp) {
       reqHostIP = this.param.hostIp;
     }
     else if (this.param.hosts && this.param.hosts[reqHostName]) {
       reqHostIP = this.param.hosts[reqHostName];
-    }
-    else {
-      reqHostIP = reqHostName;
-    }
-
-    if (reqHostIP == reqHostName && /favicon\.ico$/.test(this.req.url)) {
-      return false;
     }
 
     var requestOption = {
@@ -263,7 +257,12 @@ FlexCombo.prototype = {
         }
       }
       else {
-        Helper.Log.warn(absPath, "Not Found!");
+        if (/favicon\.ico$/.test(_url)) {
+          this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico"));
+        }
+        else {
+          Helper.Log.warn(absPath, "Not Found!");
+        }
       }
     }
 
@@ -316,13 +315,8 @@ FlexCombo.prototype = {
           .end();
       }
       else {
-        if (/favicon\.ico$/.test(_url)) {
-          this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "bin/favicon.ico"));
-        }
-        else {
-          this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
-          Helper.Log.error(_url);
-        }
+        this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
+        Helper.Log.error(_url);
         next();
       }
     }
