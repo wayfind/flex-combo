@@ -79,18 +79,9 @@ FlexCombo.prototype = {
     }
   },
   engines: [],
-  addEngine: function (rule, func, p) {
+  addEngine: function (rule, func, p, inner) {
     if (rule && typeof func == "function") {
-      FlexCombo.prototype.engines.push({
-        rule: rule,
-        func: func,
-        path: p
-      });
-    }
-  },
-  _addEngine: function (rule, func, p) {
-    if (rule && typeof func == "function") {
-      this.engines.push({
+      (inner ? this.engines : FlexCombo.prototype.engines).push({
         rule: rule,
         func: func,
         path: p
@@ -101,7 +92,7 @@ FlexCombo.prototype = {
     this.req = req;
     this.res = res;
 
-    this.query = this.req.query;
+    this.query = Helper.merge(true, this.query, req.query || {});
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
@@ -115,19 +106,19 @@ FlexCombo.prototype = {
     }
 
     var engines = this.param.engine || {};
-    var regx, path;
+    var regx, path, mod;
     for (var k in engines) {
       regx = new RegExp(k);
       path = this.URL.replace(regx, engines[k]);
-
-      suffix.push(k);
       if (regx.test(this.URL)) {
-        this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(path);
-      }
+        suffix.push(k);
 
-      var js = pathLib.join(process.cwd(), path);
-      if (fsLib.existsSync(js) || fsLib.existsSync(js + ".js")) {
-        this._addEngine(k, require(js), path);
+        this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(path);
+
+        mod = pathLib.join(process.cwd(), path);
+        if (fsLib.existsSync(mod) || fsLib.existsSync(mod + ".js")) {
+          this.addEngine(k, require(mod), path, true);
+        }
       }
     }
 
@@ -224,12 +215,7 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      this.query = Helper.merge(true, this.param[engine.path] || {}, this.query);
-
-      if (this.param.traceRule) {
-        Helper.Log.color("blue", "\nParams Applied:");
-        Helper.Log.color("blue", JSON.stringify(this.query, null, 2));
-      }
+      this.query = Helper.merge(true, this.query, this.param[engine.path] || {});
 
       engine.func(absPath, filteredURL, this.query, function (e, result, realPath, MIME) {
         if (!e) {
