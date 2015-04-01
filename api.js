@@ -19,6 +19,7 @@ function FlexCombo(param, confFile) {
   this.MIME = null;
   this.req = null;
   this.res = null;
+  this.engines = [];
   this.param = Helper.clone(require("./lib/param"));
   this.query = {};
   this.cacheDir = pathLib.join(process.cwd(), ".cache");
@@ -87,27 +88,24 @@ FlexCombo.prototype = {
       });
     }
   },
+  _addEngine: function (rule, func, p) {
+    if (rule && typeof func == "function") {
+      this.engines.push({
+        rule: rule,
+        func: func,
+        path: p
+      });
+    }
+  },
   init: function (req, res) {
     this.req = req;
     this.res = res;
 
+    this.query = this.req.query;
+
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
-
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, function (all, $1, pos, input) {
-      input.slice(pos + $1.length + 1).split('&').map(function (i) {
-        var matched = i.match(/(.+)=(.{0,})/);
-        if (matched) {
-          this.query[matched[1]] =
-            (matched[2] == '' || isNaN(matched[2]))
-              ? matched[2]
-              : matched[2] - 0;
-        }
-      }.bind(this));
-
-      return $1;
-    }.bind(this));
-
+    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
     this.MIME = mime.lookup(this.URL);
 
     var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
@@ -117,16 +115,24 @@ FlexCombo.prototype = {
     }
 
     var engines = this.param.engine || {};
+    var regx, path;
     for (var k in engines) {
+      regx = new RegExp(k);
+      path = this.URL.replace(regx, engines[k]);
+
       suffix.push(k);
-      if (new RegExp(k).test(this.URL)) {
-        this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(engines[k]);
+      if (regx.test(this.URL)) {
+        this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(path);
       }
-      var js = pathLib.join(process.cwd(), engines[k]);
-      if (fsLib.existsSync(js)) {
-        this.addEngine(k, require(js), engines[k]);
+
+      var js = pathLib.join(process.cwd(), path);
+      if (fsLib.existsSync(js) || fsLib.existsSync(js + ".js")) {
+        this._addEngine(k, require(js), path);
       }
     }
+
+    this.engines = FlexCombo.prototype.engines.concat(this.engines);
+
     for (var i = 0, len = this.engines.length; i < len; i++) {
       suffix.push(this.engines[i].rule);
     }
@@ -135,7 +141,7 @@ FlexCombo.prototype = {
       return suffix.indexOf(elem) == pos;
     });
 
-    return this.URL.match(new RegExp(suffix.join('|'))) ? true : false;
+    return new RegExp(suffix.join('|')).test(this.URL);
   },
   convert: function (buff, _url) {
     if (!Buffer.isBuffer(buff)) {
@@ -220,8 +226,10 @@ FlexCombo.prototype = {
       var engine = this.engines[matchedIndex];
       this.query = Helper.merge(true, this.param[engine.path] || {}, this.query);
 
-      Helper.Log.color("blue", "\nParams Applied:");
-      Helper.Log.color("blue", JSON.stringify(this.query, null, 2));
+      if (this.param.traceRule) {
+        Helper.Log.color("blue", "\nParams Applied:");
+        Helper.Log.color("blue", JSON.stringify(this.query, null, 2));
+      }
 
       engine.func(absPath, filteredURL, this.query, function (e, result, realPath, MIME) {
         if (!e) {
