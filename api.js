@@ -19,7 +19,9 @@ function FlexCombo(param, confFile) {
   this.MIME = null;
   this.req = null;
   this.res = null;
-  this.engines = [];
+  this.engines = FlexCombo.prototype.engines.map(function(i) {
+    return i;
+  });
   this.param = Helper.clone(require("./lib/param"));
   this.query = {};
   this.cacheDir = pathLib.join(process.cwd(), ".cache");
@@ -121,8 +123,6 @@ FlexCombo.prototype = {
         }
       }
     }
-
-    this.engines = FlexCombo.prototype.engines.concat(this.engines);
 
     for (var i = 0, len = this.engines.length; i < len; i++) {
       suffix.push(this.engines[i].rule);
