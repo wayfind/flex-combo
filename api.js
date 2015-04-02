@@ -292,7 +292,7 @@ FlexCombo.prototype = {
                 buffer.push(chunk);
               })
               .on("end", function () {
-                var buff = Helper.joinBuffer(buffer);
+                var buff = Buffer.concat(buffer);
                 self.cacheFile(_url, buff);
                 self.result[_url] = buff;
                 if (self.param.traceRule && self.param.traceRule.test("Remote " + _url)) {
