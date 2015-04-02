@@ -53,6 +53,14 @@ var https = require('https');
 var fs    = require('fs');
 var path  = require('path');
 
+var tls = require("tls");
+var exec = require("child_process").exec;
+
+var rootCA = path.join(__dirname, "rootCA.crt");
+exec("sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA, function () {
+  console.log("The rootCA is installed!");
+});
+
 var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
 var dir = path.join(userHome, ".flex-combo");
 
@@ -79,25 +87,44 @@ http.createServer(function (req, res) {
     console.log('Flex Combo HTTP Server running at http://127.0.0.1:'+http_port);
 });
 
-https.createServer(
-    {
-       key: fs.readFileSync(__dirname+"/privatekey.pem", "utf-8"),
-       cert:fs.readFileSync(__dirname+"/certificate.pem", "utf-8")
-    },
-    function (req, res) {
-        function next() {
-            res.writeHead(404, {'Content-Type': 'text/plain'});
-            res.end('Your combo file not found.');
-        }
+https.createServer({
+    SNICallback: function (domain, SNICallback) {
+      var serverPath = path.join(dir, ".server/");
+      if (!fs.existsSync(serverPath)) {
+        fs.mkdirSync(serverPath);
+      }
+      var certPath = path.join(serverPath, domain);
+      var key = certPath + ".key";
+      var crt = certPath + ".crt";
 
-        try {
-            req.protocol = "https";
-            comboInst(req, res, next);
+      exec(__dirname + "/gen-cer " + domain + ' ' + serverPath + ' ' + path.dirname(rootCA), function (err) {
+        if (!err) {
+          SNICallback(null, tls.createSecureContext({
+            key: fs.readFileSync(key, "utf-8"),
+            cert: fs.readFileSync(crt, "utf-8")
+          }));
         }
-        catch (e) {
-            next();
+        else {
+          SNICallback(err);
         }
-    }
+      });
+    },
+    ca: fs.readFileSync(rootCA, "utf-8")
+  },
+  function (req, res) {
+      function next() {
+          res.writeHead(404, {'Content-Type': 'text/plain'});
+          res.end('Your combo file not found.');
+      }
+
+      try {
+          req.protocol = "https";
+          comboInst(req, res, next);
+      }
+      catch (e) {
+          next();
+      }
+  }
 )
 .listen(https_port, function() {
     console.log('Flex Combo HTTPS Server running at https://127.0.0.1:'+https_port);
