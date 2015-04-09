@@ -9,9 +9,17 @@ var fsLib = require("fs");
 var Helper = require("./lib/util");
 
 try {
-  var updateNotifier = require("update-notifier");
   var pkg = require(__dirname + "/package.json");
-  updateNotifier({pkg: pkg}).notify();
+
+  require("check-update")({
+    packageName: pkg.name,
+    packageVersion: pkg.version,
+    isCLI: process.title == "node"
+  }, function (err, latestVersion, defaultMessage) {
+    if (!err && pkg.version < latestVersion) {
+      console.log(defaultMessage);
+    }
+  });
 }
 catch (e) {
 }
