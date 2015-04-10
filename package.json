@@ -1,6 +1,6 @@
 {
   "name": "flex-combo",
-  "version": "0.10.9",
+  "version": "0.11.0",
   "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
   "main": "index.js",
   "bin": {
@@ -10,11 +10,11 @@
     "async": "~0.9.0",
     "check-update": "~0.0.7",
     "commander": "~2.5.0",
-    "dac": "~0.4.1",
+    "dac": "~0.5.0",
     "mace": "~2.0.0",
-    "merge": "^1.2.0",
+    "merge": "~1.2.0",
     "mime": "~1.3.4",
-    "mkdirp": "^0.5.0",
+    "mkdirp": "~0.5.0",
     "through2": "~0.6.3"
   },
   "repository": {
