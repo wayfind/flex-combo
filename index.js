@@ -6,7 +6,7 @@ var API = require("./api");
 var DAC = require("dac");
 var pathLib = require("path");
 var fsLib = require("fs");
-var Helper = require("./lib/util");
+var mkdirp = require("mkdirp");
 
 try {
   var pkg = require(__dirname + "/package.json");
@@ -51,7 +51,7 @@ function transfer(dir, key, except) {
 
     var confDir = pathLib.dirname(confFile);
     if (!fsLib.existsSync(confDir)) {
-      Helper.mkdirPSync(confDir);
+      mkdirp.sync(confDir);
       fsLib.chmod(confDir, 0777);
     }
 
