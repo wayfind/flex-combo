@@ -6,12 +6,20 @@ var API = require("./api");
 var DAC = require("dac");
 var pathLib = require("path");
 var fsLib = require("fs");
-var Helper = require("./lib/util");
+var mkdirp = require("mkdirp");
 
 try {
-  var updateNotifier = require("update-notifier");
   var pkg = require(__dirname + "/package.json");
-  updateNotifier({pkg: pkg}).notify();
+
+  require("check-update")({
+    packageName: pkg.name,
+    packageVersion: pkg.version,
+    isCLI: process.title == "node"
+  }, function (err, latestVersion, defaultMessage) {
+    if (!err && pkg.version < latestVersion) {
+      console.log(defaultMessage);
+    }
+  });
 }
 catch (e) {
 }
@@ -19,8 +27,8 @@ catch (e) {
 var fcInst = new API();
 fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
 fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
-fcInst.addEngine("\\.html\\.js$", function (htmlfile, _url, param, cb) {
-  DAC.tpl(htmlfile, _url, param, function (err, result, filepath, MIME) {
+fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
+  DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
     if (typeof result != "undefined") {
       var fs = require("fs");
       fs.writeFile(htmlfile, result, function () {
@@ -43,7 +51,7 @@ function transfer(dir, key, except) {
 
     var confDir = pathLib.dirname(confFile);
     if (!fsLib.existsSync(confDir)) {
-      Helper.mkdirPSync(confDir);
+      mkdirp.sync(confDir);
       fsLib.chmod(confDir, 0777);
     }
 

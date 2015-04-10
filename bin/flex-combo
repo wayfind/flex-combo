@@ -1,131 +1,148 @@
 #!/usr/bin/env node
 
 var helpInfo = {
-    'dir':['本地目录。默认情况下是执行命令的当前目录。','Directory'],
-    'url':['本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。','URL The current directory will mapped to.'],
-    'servlet':['Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"','Combo servlet'],
-    'host':['服务器域名。如果文件不在本地，将到此域名处请求文件。','Combo server'],
-    'seperator':['文件分隔符。默认为","', 'Seperator'],
-    'filter':['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。','Filter'],
-    'charset':['http响应数据的编码方式。默认为gbk。', 'Charset'],
-    'help':['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。','Help'],
-    'port':['flex-combo运行的端口号。默认是80/443', 'Port'],
-    'forwardPrefix':['转发的url统一增加前缀', 'Add prefix to url while forwarding to Combo server']
+  'dir': ['本地目录。默认情况下是执行命令的当前目录。', 'Directory'],
+  'url': ['本地目录映射URL。例如：传入/apps/et本地目录被映射到/apps/et下。这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的。', 'URL The current directory will mapped to.'],
+  'servlet': ['Combo的servlet。对于淘宝而言是"?",对yahoo而言是"combo"。默认是"?"', 'Combo servlet'],
+  'host': ['服务器域名。如果文件不在本地，将到此域名处请求文件。', 'Combo server'],
+  'seperator': ['文件分隔符。默认为","', 'Seperator'],
+  'filter': ['过滤器。由于正则和替换字符串组成，中间用":"分隔。多个filter用","分隔。filter一般被用来处理掉时间戳、调试文件等场景下。默认的filter将-min.js替换为.js，将时间戳?t=xxx去掉。', 'Filter'],
+  'charset': ['http响应数据的编码方式。默认为gbk。', 'Charset'],
+  'help': ['flex-combo是一个javascript/css合并工具(combo tool)。运行此flex-combo将在本地80端口监听http请求，根据请求中携带的js/css文件信息，合并内容并且返回。', 'Help'],
+  'port': ['flex-combo运行的端口号。默认是80/443', 'Port'],
+  'forwardPrefix': ['转发的url统一增加前缀', 'Add prefix to url while forwarding to Combo server']
 };
 var LANG = process.env.LANG || 'zh';
 var langIndex = (LANG.indexOf('zh') === 0) ? 0 : 1;
 
 var program = require("commander");
 program
-    .version(require(__dirname+'/../package.json').version)
-    .option('-d, --dir [string]', helpInfo.dir[langIndex])
-    .option('-u, --url [string]', helpInfo.url[langIndex])
-    .option('-H, --host [string]', helpInfo.host[langIndex])
-    .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
-    .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
-    .option('-c, --charset [string]', helpInfo.charset[langIndex])
-    .option('-p, --http_port [string]', helpInfo.port[langIndex])
-    .option('-P, --https_port [string]', helpInfo.port[langIndex])
-    .option('-f, --forwardPrefix [string]',helpInfo.forwardPrefix[langIndex])
-    .parse(process.argv);
+  .version(require(__dirname + '/../package.json').version)
+  .option('-d, --dir [string]', helpInfo.dir[langIndex])
+  .option('-u, --url [string]', helpInfo.url[langIndex])
+  .option('-H, --host [string]', helpInfo.host[langIndex])
+  .option('-s, --servlet [string]', helpInfo.servlet[langIndex])
+  .option('-e, --seperator [string]', helpInfo.seperator[langIndex])
+  .option('-c, --charset [string]', helpInfo.charset[langIndex])
+  .option('-p, --http_port [string]', helpInfo.port[langIndex])
+  .option('-P, --https_port [string]', helpInfo.port[langIndex])
+  .option('-f, --forwardPrefix [string]', helpInfo.forwardPrefix[langIndex])
+  .parse(process.argv);
 
 var param = {rootdir: (program.dir || '.')};
 
-if(program.servlet){
-    param.servlet = program.servlet;
+if (program.servlet) {
+  param.servlet = program.servlet;
 }
-if(program.seperator){
-    param.seperator = program.seperator;
+if (program.seperator) {
+  param.seperator = program.seperator;
 }
-if(program.charset){
-    param.charset = program.charset;
+if (program.charset) {
+  param.charset = program.charset;
 }
-if(program.host){
-    param.host = program.host;
+if (program.host) {
+  param.host = program.host;
 }
-if(program.forwardPrefix){
-    param.forwardPrefix = program.forwardPrefix;
+if (program.forwardPrefix) {
+  param.forwardPrefix = program.forwardPrefix;
 }
 
-var flexCombo = require('../index');
-var http  = require('http');
-var https = require('https');
-var fs    = require('fs');
-var path  = require('path');
-
+var flexCombo = require("../index");
+var http = require("http");
+var https = require("https");
+var fs = require("fs");
+var path = require("path");
 var tls = require("tls");
 var exec = require("child_process").exec;
 
+var platform = require("os").platform();
 var rootCA = path.join(__dirname, "rootCA.crt");
-exec("sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA, function () {
+
+var shell;
+if (platform.match(/^win/i)) {
+  shell = "certutil -addstore -f \"ROOT\" new-root-certificate.crt";
+}
+else if (platform.match(/darwin/i)) {
+  shell = "sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA;
+}
+else {
+  // TODO: Linux
+}
+
+exec(shell, function () {
   console.log("The rootCA is installed!");
 });
 
 var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
 var dir = path.join(userHome, ".flex-combo");
 
-var comboInst  = flexCombo(param, dir);
+var comboInst = flexCombo(param, dir);
 
-var http_port  = program.http_port  || 80;
+var http_port = program.http_port || 80;
 var https_port = program.https_port || 443;
 
-http.createServer(function (req, res) {
-    function next() {
+http
+  .createServer(
+    function (req, res) {
+      function next() {
         res.writeHead(404, {'Content-Type': 'text/plain'});
         res.end('Your combo file not found.');
-    }
-
-    try {
-        req.protocol = "http";
-        comboInst(req, res, next);
-    }
-    catch (e) {
-        next();
-    }
-})
-.listen(http_port, function() {
-    console.log('Flex Combo HTTP Server running at http://127.0.0.1:'+http_port);
-});
-
-https.createServer({
-    SNICallback: function (domain, SNICallback) {
-      var serverPath = path.join(dir, ".server/");
-      if (!fs.existsSync(serverPath)) {
-        fs.mkdirSync(serverPath);
-      }
-      var certPath = path.join(serverPath, domain);
-      var key = certPath + ".key";
-      var crt = certPath + ".crt";
-
-      exec(__dirname + "/gen-cer " + domain + ' ' + serverPath + ' ' + path.dirname(rootCA), function (err) {
-        if (!err) {
-          SNICallback(null, tls.createSecureContext({
-            key: fs.readFileSync(key, "utf-8"),
-            cert: fs.readFileSync(crt, "utf-8")
-          }));
-        }
-        else {
-          SNICallback(err);
-        }
-      });
-    },
-    ca: fs.readFileSync(rootCA, "utf-8")
-  },
-  function (req, res) {
-      function next() {
-          res.writeHead(404, {'Content-Type': 'text/plain'});
-          res.end('Your combo file not found.');
       }
 
       try {
-          req.protocol = "https";
-          comboInst(req, res, next);
+        req.protocol = "http";
+        comboInst(req, res, next);
       }
       catch (e) {
-          next();
+        next();
       }
-  }
-)
-.listen(https_port, function() {
-    console.log('Flex Combo HTTPS Server running at https://127.0.0.1:'+https_port);
-});
+    }
+  )
+  .listen(http_port, function () {
+    console.log('Flex Combo HTTP Server running at http://127.0.0.1:' + http_port);
+  });
+
+https
+  .createServer(
+    {
+      SNICallback: function (domain, SNICallback) {
+        var serverPath = path.join(dir, ".server/");
+        if (!fs.existsSync(serverPath)) {
+          fs.mkdirSync(serverPath);
+        }
+        var certPath = path.join(serverPath, domain);
+        var key = certPath + ".key";
+        var crt = certPath + ".crt";
+
+        exec(__dirname + "/gen-cer " + domain + ' ' + serverPath + ' ' + path.dirname(rootCA), function (err) {
+          if (!err) {
+            SNICallback(null, tls.createSecureContext({
+              key: fs.readFileSync(key, "utf-8"),
+              cert: fs.readFileSync(crt, "utf-8")
+            }));
+          }
+          else {
+            SNICallback(err);
+          }
+        });
+      },
+      ca: fs.readFileSync(rootCA, "utf-8")
+    },
+    function (req, res) {
+      function next() {
+        res.writeHead(404, {'Content-Type': 'text/plain'});
+        res.end('Your combo file not found.');
+      }
+
+      try {
+        req.protocol = "https";
+        comboInst(req, res, next);
+      }
+      catch (e) {
+        next();
+      }
+    }
+  )
+  .listen(https_port, function () {
+    console.log('Flex Combo HTTPS Server running at https://127.0.0.1:' + https_port);
+  });
