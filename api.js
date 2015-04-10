@@ -3,15 +3,18 @@ var pathLib = require("path");
 var fsLib = require("fs");
 var mime = require("mime");
 var async = require("async");
+var mkdirp = require("mkdirp");
+var merge = require("merge");
+var Helper = require("./lib/util");
 var DAC = require("dac");
 var isUtf8 = DAC.isUtf8;
 var iconv = DAC.iconv;
-
-var Helper = require("./lib/util");
 var ALProtocol = {
   "http:": require("http"),
   "https:": require("https")
 };
+
+var ENGINES = [];
 
 function FlexCombo(param, confFile) {
   this.HOST = null;
@@ -19,10 +22,10 @@ function FlexCombo(param, confFile) {
   this.MIME = null;
   this.req = null;
   this.res = null;
-  this.engines = FlexCombo.prototype.engines.map(function(i) {
+  this.engines = ENGINES.map(function(i) {
     return i;
   });
-  this.param = Helper.clone(require("./lib/param"));
+  this.param = merge(true, require("./lib/param"));
   this.query = {};
   this.cacheDir = pathLib.join(process.cwd(), ".cache");
   this.result = {};
@@ -36,14 +39,14 @@ function FlexCombo(param, confFile) {
       Helper.Log.error("Params Error!");
       confJSON = {};
     }
-    this.param = Helper.merge(true, this.param, confJSON, param || {});
+    this.param = merge.recursive(true, this.param, confJSON, param || {});
 
     if (confJSON.filter || param.filter) {
-      this.param.filter = Helper.merge(confJSON.filter || {}, param.filter || {});
+      this.param.filter = merge(confJSON.filter || {}, param.filter || {});
     }
   }
   else {
-    this.param = Helper.merge(true, this.param, param || {});
+    this.param = merge.recursive(true, this.param, param || {});
   }
 
   if (!this.param.urls['/']) {
@@ -51,7 +54,7 @@ function FlexCombo(param, confFile) {
   }
 
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
-    Helper.mkdirPSync(this.cacheDir);
+    mkdirp.sync(this.cacheDir);
     fsLib.chmod(this.cacheDir, 0777);
   }
 
@@ -80,10 +83,9 @@ FlexCombo.prototype = {
       FlexCombo.prototype.parser = func;
     }
   },
-  engines: [],
   addEngine: function (rule, func, p, inner) {
     if (rule && typeof func == "function") {
-      (inner ? this.engines : FlexCombo.prototype.engines).push({
+      (inner ? this.engines : ENGINES).push({
         rule: rule,
         func: func,
         path: p
@@ -94,7 +96,7 @@ FlexCombo.prototype = {
     this.req = req;
     this.res = res;
 
-    this.query = Helper.merge(true, this.query, req.query || {});
+    this.query = merge.recursive(true, this.query, req.query || {});
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
@@ -172,7 +174,7 @@ FlexCombo.prototype = {
       return false;
     }
 
-    var protocol = (this.req.protocol || "https") + ':';
+    var protocol = (this.req.protocol || "http") + ':';
     var H = this.req.headers.host.split(':');
     var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
     var reqHostName = H[0];
@@ -193,10 +195,11 @@ FlexCombo.prototype = {
       rejectUnauthorized: false,
       headers: {
         "x-broker": "flex-combo",
-        host: reqHostName
+        host: reqHostName,
+        cookie: this.req.headers.cookie
       }
     };
-    requestOption.headers = Helper.merge(true, this.param.headers, requestOption.headers);
+    requestOption.headers = merge.recursive(true, this.param.headers || {}, requestOption.headers);
 
     return requestOption;
   },
@@ -215,9 +218,9 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      this.query = Helper.merge(true, this.query, this.param[engine.path] || {});
+      this.query = merge.recursive(true, this.query, this.param[engine.path] || {});
 
-      engine.func(absPath, filteredURL, this.query, function (e, result, realPath, MIME) {
+      engine.func(absPath, this.buildRequestOption(filteredURL), this.query, function (e, result, realPath, MIME) {
         if (!e) {
           this.MIME = MIME;
 
