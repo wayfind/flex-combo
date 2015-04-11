@@ -7,12 +7,9 @@ var mkdirp = require("mkdirp");
 var merge = require("merge");
 var Helper = require("./lib/util");
 var DAC = require("dac");
+var fetch = require("fetch-agent");
 var isUtf8 = DAC.isUtf8;
 var iconv = DAC.iconv;
-var ALProtocol = {
-  "http:": require("http"),
-  "https:": require("https")
-};
 
 var ENGINES = [];
 
@@ -22,7 +19,7 @@ function FlexCombo(param, confFile) {
   this.MIME = null;
   this.req = null;
   this.res = null;
-  this.engines = ENGINES.map(function(i) {
+  this.engines = ENGINES.map(function (i) {
     return i;
   });
   this.param = merge(true, require("./lib/param"));
@@ -96,7 +93,7 @@ FlexCombo.prototype = {
     this.req = req;
     this.res = res;
 
-    this.query = merge.recursive(true, this.query, req.query || {});
+    this.query = merge.recursive(true, this.query, (req.body || req.query || {}));
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
@@ -282,34 +279,21 @@ FlexCombo.prototype = {
       var self = this;
       var requestOption = this.buildRequestOption(_url);
       if (requestOption) {
-        ALProtocol[requestOption.protocol]
-          .request(requestOption, function (nsres) {
-            var buffer = [];
-            nsres
-              .on("error", function () {
-                self.result[_url] = new Buffer("/* " + _url + " Fetch ERROR! */");
-                Helper.Log.error(_url);
-                next();
-              })
-              .on("data", function (chunk) {
-                buffer.push(chunk);
-              })
-              .on("end", function () {
-                var buff = Buffer.concat(buffer);
-                self.cacheFile(_url, buff);
-                self.result[_url] = buff;
-                if (self.param.traceRule && self.param.traceRule.test("Remote " + _url)) {
-                  Helper.Log.remote(_url, requestOption);
-                }
-                next();
-              });
-          })
-          .on("error", function () {
-            self.result[_url] = new Buffer("/* " + _url + " Request ERROR! */");
+        fetch.request(requestOption, function (e, buff) {
+          if (e) {
+            self.result[_url] = new Buffer("/* " + _url + " " + e.code + "! */");
             Helper.Log.error(_url);
             next();
-          })
-          .end();
+          }
+          else {
+            self.cacheFile(_url, buff);
+            self.result[_url] = buff;
+            if (self.param.traceRule && self.param.traceRule.test("Remote " + _url)) {
+              Helper.Log.remote(_url, requestOption);
+            }
+            next();
+          }
+        });
       }
       else {
         this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
