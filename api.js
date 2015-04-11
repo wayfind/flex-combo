@@ -93,7 +93,7 @@ FlexCombo.prototype = {
     this.req = req;
     this.res = res;
 
-    this.query = merge.recursive(true, this.query, req.query || {});
+    this.query = merge.recursive(true, this.query, (req.body || req.query || {}));
 
     this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
