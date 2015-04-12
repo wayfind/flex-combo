@@ -90,7 +90,12 @@ FlexCombo.prototype = {
     }
   },
   buildRequestOption: function (url) {
-    if (this.req.headers["x-broker"] == "flex-combo") {
+    url = encodeURI(url);
+
+    if (!this.req) {
+      return {path: url};
+    }
+    else if (this.req.headers["x-broker"] == "flex-combo") {
       return false;
     }
 
@@ -110,7 +115,7 @@ FlexCombo.prototype = {
       protocol: protocol,
       host: reqHostIP,
       port: reqPort,
-      path: encodeURI(url),
+      path: url,
       method: this.req.method || "GET",
       rejectUnauthorized: false,
       headers: {
