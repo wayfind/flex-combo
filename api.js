@@ -51,8 +51,9 @@ function FlexCombo(param, confFile) {
   }
 
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
-    mkdirp.sync(this.cacheDir);
-    fsLib.chmod(this.cacheDir, 0777);
+    mkdirp(this.cacheDir, function(e, dir) {
+      fsLib.chmod(dir, 0777);
+    });
   }
 
   this.param.traceRule = new RegExp(this.param.traceRule, 'i');
@@ -80,9 +81,9 @@ FlexCombo.prototype = {
       FlexCombo.prototype.parser = func;
     }
   },
-  addEngine: function (rule, func, p, inner) {
+  addEngine: function (rule, func, p, realtime) {
     if (rule && typeof func == "function") {
-      (inner ? this.engines : ENGINES).push({
+      (realtime ? this.engines : ENGINES).push({
         rule: rule,
         func: func,
         path: p
@@ -384,7 +385,11 @@ FlexCombo.prototype = {
   cacheFile: function (_url, buff) {
     var absPath = this.getCacheFilePath(_url);
     if (absPath && !/[<>\*\?]+/g.test(absPath)) {
-      fsLib.writeFile(absPath, buff);
+      fsLib.writeFile(absPath, buff, function(e) {
+        if (!e) {
+          fsLib.chmod(absPath, 0777);
+        }
+      });
     }
   }
 };
