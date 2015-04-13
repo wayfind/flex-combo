@@ -163,6 +163,12 @@ FlexCombo.prototype = {
       }
     }
 
+    // 解析mock配置
+    var mockConfFile = this.param.mock;
+    if(mockConfFile) {
+      require('./lib/parse-mock')(pathLib.join(process.cwd(), mockConfFile), this);
+    }
+
     for (var i = 0, len = this.engines.length; i < len; i++) {
       suffix.push(this.engines[i].rule);
     }
