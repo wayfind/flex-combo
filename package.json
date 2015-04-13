@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "async": "~0.9.0",
-    "check-update": "~0.0.7",
+    "check-update": "~0.0.8",
     "commander": "~2.5.0",
     "dac": "~0.5.1",
     "fetch-agent": "~0.2.3",
