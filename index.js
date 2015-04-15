@@ -26,7 +26,7 @@ catch (e) {
 
 var fcInst = new API();
 fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
+fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
 fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
   DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
     if (typeof result != "undefined") {

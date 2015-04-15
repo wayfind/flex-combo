@@ -188,7 +188,7 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      this.query = merge.recursive(true, this.query, this.param[engine.path] || {});
+      this.query = merge.recursive(true, this.param[engine.path] || {}, this.query);
 
       engine.func(absPath, this.buildRequestOption(filteredURL), this.query, function (e, result, realPath, MIME) {
         if (!e) {
