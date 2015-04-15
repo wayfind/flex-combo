@@ -122,7 +122,7 @@ FlexCombo.prototype = {
       headers: {
         "x-broker": "flex-combo",
         host: reqHostName,
-        cookie: this.req.headers.cookie
+        cookie: this.req.headers.cookie || ''
       }
     };
     requestOption.headers = merge.recursive(true, this.param.headers || {}, requestOption.headers);
