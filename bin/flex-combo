@@ -52,24 +52,25 @@ var http = require("http");
 var https = require("https");
 var fs = require("fs");
 var path = require("path");
-var tls = require("tls");
 var exec = require("child_process").exec;
 
 var platform = require("os").platform();
+var genCert = __dirname + "/gen-cer";
 var rootCA = path.join(__dirname, "rootCA.crt");
+var defaultHost = "127.0.0.1";
 
-var shell;
+var InstallRootCA;
 if (platform.match(/^win/i)) {
-  shell = "certutil -addstore -f \"ROOT\" new-root-certificate.crt";
+  InstallRootCA = "certutil -addstore -f \"ROOT\" new-root-certificate.crt";
+  genCert += ".cmd";
 }
 else if (platform.match(/darwin/i)) {
-  shell = "sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA;
+  InstallRootCA = "sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA;
 }
 else {
   // TODO: Linux
 }
-
-exec(shell, function () {
+InstallRootCA && exec(InstallRootCA, function () {
   console.log("The rootCA is installed!");
 });
 
@@ -81,68 +82,75 @@ var comboInst = flexCombo(param, dir);
 var http_port = program.http_port || 80;
 var https_port = program.https_port || 443;
 
-http
-  .createServer(
-    function (req, res) {
-      function next() {
-        res.writeHead(404, {'Content-Type': 'text/plain'});
-        res.end('Your combo file not found.');
-      }
-
-      try {
-        req.protocol = "http";
-        comboInst(req, res, next);
-      }
-      catch (e) {
-        next();
-      }
+http.createServer(
+  function (req, res) {
+    function next() {
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.end('Your combo file not found.');
     }
-  )
+
+    try {
+      req.protocol = "http";
+      comboInst(req, res, next);
+    }
+    catch (e) {
+      next();
+    }
+  })
   .listen(http_port, function () {
-    console.log('Flex Combo HTTP Server running at http://127.0.0.1:' + http_port);
+    console.log('Flex Combo HTTP Server running at http://' + defaultHost + ':' + http_port);
   });
 
-https
-  .createServer(
-    {
-      SNICallback: function (domain, SNICallback) {
-        var serverPath = path.join(dir, ".server/");
-        if (!fs.existsSync(serverPath)) {
-          fs.mkdirSync(serverPath);
+https.createServer({
+    SNICallback: function (domain, SNICallback) {
+      var createSecureContext = require("tls").createSecureContext;
+
+      if (!(typeof SNICallback == "function" && createSecureContext)) {
+        console.log("Your Node.js IS NOT support Async SNI, please UPDATE your Node.js >= 0.11");
+        return;
+      }
+
+      var serverPath = path.join(dir, ".server");
+      if (!fs.existsSync(serverPath)) {
+        fs.mkdirSync(serverPath);
+        fs.chmod(serverPath, 0777);
+      }
+
+      var certPath = path.join(serverPath, domain);
+      var key = certPath + ".key";
+      var crt = certPath + ".crt";
+      exec([genCert, domain, serverPath, path.dirname(rootCA)].join(' '), function (err) {
+        if (!err) {
+          SNICallback(null, createSecureContext({
+            key: fs.readFileSync(key, "utf-8"),
+            cert: fs.readFileSync(crt, "utf-8")
+          }));
+          fs.chmod(key, 0777);
+          fs.chmod(crt, 0777);
         }
-        var certPath = path.join(serverPath, domain);
-        var key = certPath + ".key";
-        var crt = certPath + ".crt";
-
-        exec(__dirname + "/gen-cer " + domain + ' ' + serverPath + ' ' + path.dirname(rootCA), function (err) {
-          if (!err) {
-            SNICallback(null, tls.createSecureContext({
-              key: fs.readFileSync(key, "utf-8"),
-              cert: fs.readFileSync(crt, "utf-8")
-            }));
-          }
-          else {
-            SNICallback(err);
-          }
-        });
-      },
-      ca: fs.readFileSync(rootCA, "utf-8")
+        else {
+          SNICallback(err);
+        }
+      });
     },
-    function (req, res) {
-      function next() {
-        res.writeHead(404, {'Content-Type': 'text/plain'});
-        res.end('Your combo file not found.');
-      }
-
-      try {
-        req.protocol = "https";
-        comboInst(req, res, next);
-      }
-      catch (e) {
-        next();
-      }
+    key: fs.readFileSync(path.join(__dirname, defaultHost) + ".key", "utf-8"),
+    cert: fs.readFileSync(path.join(__dirname, defaultHost) + ".crt", "utf-8"),
+    ca: fs.readFileSync(rootCA, "utf-8")
+  },
+  function (req, res) {
+    function next() {
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.end('Your combo file not found.');
     }
-  )
+
+    try {
+      req.protocol = "https";
+      comboInst(req, res, next);
+    }
+    catch (e) {
+      next();
+    }
+  })
   .listen(https_port, function () {
-    console.log('Flex Combo HTTPS Server running at https://127.0.0.1:' + https_port);
+    console.log('Flex Combo HTTPS Server running at https://' + defaultHost + ':' + https_port);
   });
