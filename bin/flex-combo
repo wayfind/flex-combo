@@ -62,7 +62,7 @@ var defaultHost = "127.0.0.1";
 var InstallRootCA;
 if (platform.match(/^win/i)) {
   InstallRootCA = "certutil -addstore -f \"ROOT\" new-root-certificate.crt";
-  genCert += ".cmd";
+  genCert += ".bat";
 }
 else if (platform.match(/darwin/i)) {
   InstallRootCA = "sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA;
