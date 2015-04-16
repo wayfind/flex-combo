@@ -55,14 +55,13 @@ var path = require("path");
 var exec = require("child_process").exec;
 
 var platform = require("os").platform();
-var genCert = __dirname + "/gen-cer";
 var rootCA = path.join(__dirname, "rootCA.crt");
-var defaultHost = "127.0.0.1";
+var genCert = __dirname + "/gen-cer.sh";
 
 var InstallRootCA;
 if (platform.match(/^win/i)) {
   InstallRootCA = "certutil -addstore -f \"ROOT\" new-root-certificate.crt";
-  genCert += ".bat";
+  genCert = __dirname + "/gen-cer.bat";
 }
 else if (platform.match(/darwin/i)) {
   InstallRootCA = "sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain " + rootCA;
@@ -79,6 +78,7 @@ var dir = path.join(userHome, ".flex-combo");
 
 var comboInst = flexCombo(param, dir);
 
+var defaultHost = "127.0.0.1";
 var http_port = program.http_port || 80;
 var https_port = program.https_port || 443;
 
