@@ -8,21 +8,16 @@ var pathLib = require("path");
 var fsLib = require("fs");
 var mkdirp = require("mkdirp");
 
-try {
-  var pkg = require(__dirname + "/package.json");
-
-  require("check-update")({
-    packageName: pkg.name,
-    packageVersion: pkg.version,
-    isCLI: process.title == "node"
-  }, function (err, latestVersion, defaultMessage) {
-    if (!err && pkg.version < latestVersion) {
-      console.log(defaultMessage);
-    }
-  });
-}
-catch (e) {
-}
+var pkg = require(__dirname + "/package.json");
+require("check-update")({
+  packageName: pkg.name,
+  packageVersion: pkg.version,
+  isCLI: process.title == "node"
+}, function (err, latestVersion, defaultMessage) {
+  if (!err && pkg.version < latestVersion) {
+    console.log(defaultMessage);
+  }
+});
 
 var fcInst = new API();
 fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
