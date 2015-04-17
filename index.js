@@ -8,25 +8,20 @@ var pathLib = require("path");
 var fsLib = require("fs");
 var mkdirp = require("mkdirp");
 
-try {
-  var pkg = require(__dirname + "/package.json");
-
-  require("check-update")({
-    packageName: pkg.name,
-    packageVersion: pkg.version,
-    isCLI: process.title == "node"
-  }, function (err, latestVersion, defaultMessage) {
-    if (!err && pkg.version < latestVersion) {
-      console.log(defaultMessage);
-    }
-  });
-}
-catch (e) {
-}
+var pkg = require(__dirname + "/package.json");
+require("check-update")({
+  packageName: pkg.name,
+  packageVersion: pkg.version,
+  isCLI: process.title == "node"
+}, function (err, latestVersion, defaultMessage) {
+  if (!err && pkg.version < latestVersion) {
+    console.log(defaultMessage);
+  }
+});
 
 var fcInst = new API();
 fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
+fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
 fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
   DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
     if (typeof result != "undefined") {
