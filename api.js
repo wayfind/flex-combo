@@ -53,7 +53,7 @@ function FlexCombo(param, confFile) {
     this.param.rootdir = pathLib.normalize(root);
   }
   else {
-    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), root || "src"));
+    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), root));
   }
 
   if (!this.param.urls['/']) {
