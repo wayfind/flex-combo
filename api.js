@@ -5,11 +5,12 @@ var mime = require("mime");
 var async = require("async");
 var mkdirp = require("mkdirp");
 var merge = require("merge");
-var Helper = require("./lib/util");
-var DAC = require("dac");
 var fetch = require("fetch-agent");
+var DAC = require("dac");
 var isUtf8 = DAC.isUtf8;
 var iconv = DAC.iconv;
+
+var Helper = require("./lib/util");
 
 var ENGINES = [];
 
