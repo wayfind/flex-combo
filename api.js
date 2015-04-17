@@ -5,11 +5,12 @@ var mime = require("mime");
 var async = require("async");
 var mkdirp = require("mkdirp");
 var merge = require("merge");
-var Helper = require("./lib/util");
-var DAC = require("dac");
 var fetch = require("fetch-agent");
+var DAC = require("dac");
 var isUtf8 = DAC.isUtf8;
 var iconv = DAC.iconv;
+
+var Helper = require("./lib/util");
 
 var ENGINES = [];
 
@@ -24,10 +25,12 @@ function FlexCombo(param, confFile) {
   });
   this.param = merge(true, require("./lib/param"));
   this.query = {};
-  this.cacheDir = pathLib.join(process.cwd(), ".cache");
   this.result = {};
+  this.cacheDir = null;
 
   if (confFile) {
+    this.cacheDir = pathLib.join(pathLib.dirname(confFile), "../.cache");
+
     var confJSON = {};
     try {
       confJSON = JSON.parse(fsLib.readFileSync(confFile));
@@ -46,10 +49,21 @@ function FlexCombo(param, confFile) {
     this.param = merge.recursive(true, this.param, param || {});
   }
 
-  if (!this.param.urls['/']) {
-    this.param.urls['/'] = this.param.rootdir || "src";
+  var root = this.param.rootdir || "src";
+  if (root.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(root)) {
+    this.param.rootdir = pathLib.normalize(root);
+  }
+  else {
+    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), root));
   }
 
+  if (!this.param.urls['/']) {
+    this.param.urls['/'] = this.param.rootdir;
+  }
+
+  if (!this.cacheDir) {
+    this.cacheDir = pathLib.join(this.param.rootdir, "../.cache");
+  }
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
     mkdirp(this.cacheDir, function(e, dir) {
       fsLib.chmod(dir, 0777);
@@ -100,7 +114,7 @@ FlexCombo.prototype = {
       return false;
     }
 
-    var protocol = (this.req.protocol || "http") + ':';
+    var protocol = (this.req.connection.encrypted ? "https" : "http") + ':';
     var H = this.req.headers.host.split(':');
     var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
     var reqHostName = H[0];
@@ -135,7 +149,7 @@ FlexCombo.prototype = {
 
     this.query = merge.recursive(true, this.query, req.body || {}, req.query || {});
 
-    this.HOST = (req.protocol || "http") + "://" + (req.hostname || req.host || req.headers.host);
+    this.HOST = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
     this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
     this.MIME = mime.lookup(this.URL);
@@ -175,7 +189,7 @@ FlexCombo.prototype = {
   },
   engineHandler: function (_url, next) {
     var filteredURL = Helper.filteredUrl(_url, this.param.filter, this.param.traceRule);
-    var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
+    var absPath = Helper.getRealPath(filteredURL, this.param.urls);
 
     var matchedIndex = -1;
     for (var i = this.engines.length - 1, matched = null, matchedNum = -1; i >= 0; i--) {
@@ -188,7 +202,7 @@ FlexCombo.prototype = {
 
     if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
       var engine = this.engines[matchedIndex];
-      this.query = merge.recursive(true, this.query, this.param[engine.path] || {});
+      this.query = merge.recursive(true, this.param[engine.path] || {}, this.query);
 
       engine.func(absPath, this.buildRequestOption(filteredURL), this.query, function (e, result, realPath, MIME) {
         if (!e) {
@@ -208,7 +222,7 @@ FlexCombo.prototype = {
   },
   staticHandler: function (_url, next) {
     var filteredURL = Helper.filteredUrl(_url, this.param.filter, false);
-    var absPath = Helper.getRealPath(filteredURL, this.param.filter, this.param.urls);
+    var absPath = Helper.getRealPath(filteredURL, this.param.urls);
 
     if (!this.result[_url]) {
       if (fsLib.existsSync(absPath)) {
