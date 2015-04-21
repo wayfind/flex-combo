@@ -32,7 +32,7 @@ fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
   });
 }, "dac/tpl");
 
-function transfer(dir, key, except) {
+function init_config(dir, key, except) {
   var mkdirp = require("mkdirp");
 
   if (dir) {
@@ -89,7 +89,7 @@ function transfer(dir, key, except) {
 }
 
 exports = module.exports = function (param, dir) {
-  var confFile = transfer(dir, "dac/tpl", ["filter"]);
+  var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
   return function () {
     fcInst = new API(param, confFile);
@@ -130,7 +130,7 @@ exports.API = API;
 exports.engine = function (param, dir) {
   var through = require("through2");
 
-  fcInst = new API(param, transfer(dir, "dac/tpl", ["filter"]));
+  fcInst = new API(param, init_config(dir, "dac/tpl", ["filter"]));
   fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {
