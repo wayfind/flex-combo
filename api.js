@@ -56,7 +56,14 @@ function FlexCombo(param, confFile) {
     this.param.filter = merge(confJSON.filter || {}, param.filter || {});
   }
 
-  this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), this.param.rootdir || "src"));
+  var rootdir = this.param.rootdir || "src";
+  if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
+    this.param.rootdir = rootdir;
+  }
+  else {
+    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
+  }
+
   if (!this.param.urls['/']) {
     this.param.urls['/'] = this.param.rootdir;
   }
