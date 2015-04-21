@@ -76,7 +76,7 @@ InstallRootCA && exec(InstallRootCA, function () {
 var userHome = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH; // 兼容windows
 var dir = path.join(userHome, ".flex-combo");
 
-var comboInst = flexCombo(param, dir);
+var comboInst = flexCombo(param, path.join(dir, "config.json"));
 
 var defaultHost = "127.0.0.1";
 var http_port = program.http_port || 80;

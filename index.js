@@ -4,9 +4,8 @@
  * */
 var API = require("./api");
 var DAC = require("dac");
-var pathLib = require("path");
 var fsLib = require("fs");
-var mkdirp = require("mkdirp");
+var pathLib = require("path");
 
 var pkg = require(__dirname + "/package.json");
 require("check-update")({
@@ -25,9 +24,8 @@ fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
 fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
   DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
     if (typeof result != "undefined") {
-      var fs = require("fs");
-      fs.writeFile(htmlfile, result, function () {
-        fs.chmod(htmlfile, 0777);
+      fsLib.writeFile(htmlfile, result, function () {
+        fsLib.chmod(htmlfile, 0777);
       });
     }
     cb(err, result || '', filepath, MIME);
@@ -35,46 +33,52 @@ fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
 }, "dac/tpl");
 
 function transfer(dir, key, except) {
+  var mkdirp = require("mkdirp");
+
   if (dir) {
-    var confFile;
-    if (dir && (/^\//.test(dir) || /^\w{1}:[\\|\/].*$/.test(dir))) {
-      confFile = pathLib.join(dir, "config.json");
+    var confDir, confFile, json = pathLib.basename(__dirname) + ".json";
+    if (dir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(dir)) {
+      if (/\.json$/.test(dir)) {
+        confFile = dir;
+        confDir = pathLib.dirname(confFile);
+      }
+      else {
+        confDir = dir;
+        confFile = pathLib.join(confDir, json);
+      }
     }
     else {
-      confFile = pathLib.join(process.cwd(), dir || ".config", pathLib.basename(__dirname) + ".json");
+      confDir = pathLib.join(process.cwd(), dir);
+      confFile = pathLib.join(confDir, json);
     }
 
-    var confDir = pathLib.dirname(confFile);
     if (!fsLib.existsSync(confDir)) {
       mkdirp.sync(confDir);
       fsLib.chmod(confDir, 0777);
     }
 
-    if (!fsLib.existsSync(confFile)) {
-      fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
-      fsLib.chmod(confFile, 0777);
-    }
+    if (fsLib.existsSync(confFile)) {
+      var userParam = require(confFile);
+      if (key && typeof userParam[key] == "undefined") {
+        var param = require("./lib/param");
+        var keys = Object.keys(param[key]);
 
-    var userParam = require(confFile);
-    if (key && typeof userParam[key] == "undefined") {
-      var param = require("./lib/param");
-      var keys = Object.keys(param[key]);
+        userParam[key] = {};
+        except = except || [];
 
-      userParam[key] = {};
-      except = except || [];
+        keys.map(function (i) {
+          if (except.indexOf(i) == -1 && typeof userParam[i] != "undefined") {
+            userParam[key][i] = userParam[i];
+            delete userParam[i];
+          }
+          else {
+            userParam[key][i] = param[key][i];
+          }
+        });
 
-      keys.map(function (i) {
-        if (except.indexOf(i) == -1 && typeof userParam[i] != "undefined") {
-          userParam[key][i] = userParam[i];
-          delete userParam[i];
-        }
-        else {
-          userParam[key][i] = param[key][i];
-        }
-      });
-
-      fsLib.writeFileSync(confFile, JSON.stringify(userParam, null, 2), {encoding: "utf-8"});
-      fsLib.chmod(confFile, 0777);
+        fsLib.writeFileSync(confFile, JSON.stringify(userParam, null, 2), {encoding: "utf-8"});
+        fsLib.chmod(confFile, 0777);
+      }
     }
 
     return confFile;
@@ -124,10 +128,7 @@ exports = module.exports = function (param, dir) {
 
 exports.API = API;
 exports.engine = function (param, dir) {
-  param = param || {};
-
   var through = require("through2");
-  var pathLib = require("path");
 
   fcInst = new API(param, transfer(dir, "dac/tpl", ["filter"]));
   fcInst.param.traceRule = false;
