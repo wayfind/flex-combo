@@ -82,7 +82,7 @@ FlexCombo.prototype = {
       var file = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
-        return pathLib.join(base, i).replace(/\\/g, '/');
+        return urlLib.resolve(base, i);
       });
     }
     else {
@@ -150,7 +150,9 @@ FlexCombo.prototype = {
 
     this.HOST = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
+    this.URL = urlLib.parse(req.url).path
+      .replace(/([^\?])\?[^\?].*$/, "$1")
+      .replace(/\?{1,}$/, '');
     this.MIME = mime.lookup(this.URL);
 
     var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
@@ -365,7 +367,7 @@ FlexCombo.prototype = {
         }
 
         if (
-          /\?sourcemap$/.test(req.url) &&
+          /[\?&]sourcemap\b/.test(req.url) &&
           (this.MIME == "application/javascript" || this.MIME == "text/css")
         ) {
           var fileType = (this.MIME == "application/javascript" ? "js" : "css");
