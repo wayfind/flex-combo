@@ -122,7 +122,6 @@ exports = module.exports = function (param, dir) {
     }
     catch (e) {
       console.log(e);
-      console.log(e.stack);
     }
   }
 };
