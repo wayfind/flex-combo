@@ -64,7 +64,7 @@ function FlexCombo(param, confFile) {
     this.cacheDir = pathLib.normalize(pathLib.join(this.param.rootdir, "../.cache"));
   }
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
-    mkdirp(this.cacheDir, function(e, dir) {
+    mkdirp(this.cacheDir, function (e, dir) {
       fsLib.chmod(dir, 0777);
     });
   }
@@ -272,7 +272,7 @@ FlexCombo.prototype = {
             tips = remoteURL + " Fetch Error!";
             self.result[_url] = new Buffer("/* " + tips + " */");
             Helper.Log.error(tips);
-            next(500);
+            next(null, 500);
           }
           else {
             if (nsres.statusCode == 404) {
@@ -284,7 +284,7 @@ FlexCombo.prototype = {
                 self.result[_url] = new Buffer("/* " + tips + " */");
               }
               Helper.Log.error(tips);
-              next(404);
+              next(null, 404);
             }
             else {
               self.cacheFile(_url, buff);
@@ -300,7 +300,7 @@ FlexCombo.prototype = {
       else {
         this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
         Helper.Log.error(_url + " Not Found!");
-        next(404);
+        next(null, 404);
       }
     }
     else {
@@ -345,58 +345,39 @@ FlexCombo.prototype = {
         );
       }
 
-      async.series(Q, function (statusCode) {
-        this.res.writeHead(statusCode || 200, {
+      async.series(Q, function (e, responseData) {
+        responseData = responseData.filter(function (elem, pos) {
+          return elem && responseData.indexOf(elem) == pos;
+        });
+
+        res.writeHead(responseData[0] || 200, {
           "Access-Control-Allow-Origin": '*',
           "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
           "X-MiddleWare": "flex-combo"
         });
 
-        var isSourceMap = this.req.originalUrl.indexOf("sourcemap") !== -1 && (
-          this.MIME == "application/javascript" || this.MIME == "text/css"
-        );
-        if (isSourceMap) {
-          var concat = require("source-map-concat");
-          var createDummySourceMap = require("source-map-dummy");
-          var inlineSourceMapComment = require('inline-source-map-comment');
-
-          var fileType = (this.MIME == "application/javascript" ? "js": "css");
-          var fileURI, fileBuff, concatFiles = [];
-
-          for (var i = 0; i < FLen; i++) {
-            fileURI = files[i];
-            fileBuff = this.result[fileURI];
-
-            concatFiles.push({
-              source: fileURI,
-              code: iconv.decode(fileBuff, isUtf8(fileBuff) ? "utf-8" : "gbk")
-            });
-          }
-
-          concatFiles.forEach(function (file) {
-            file.map = createDummySourceMap(file.code, {
-              source: file.source,
-              type: fileType
-            });
-          });
-          var result = concat(concatFiles, {delimiter: "\n"}).toStringWithSourceMap();
-          res.write(result.code + "\n" + inlineSourceMapComment(result.map.toString(), {
-            block: (fileType == "css" ? true: false)
-          }));
+        var fileURI, fileBuff;
+        for (var i = 0; i < FLen; i++) {
+          fileURI = files[i];
+          fileBuff = this.result[fileURI];
+          res.write(fileBuff ? fileBuff : new Buffer("/* " + fileURI + " Empty!*/"));
+          res.write("\n");
         }
-        else {
-          var buff;
-          for (var i = 0; i < FLen; i++) {
-            buff = this.result[files[i]];
-            res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
-          }
+
+        if (
+          /\?sourcemap$/.test(req.url) &&
+          (this.MIME == "application/javascript" || this.MIME == "text/css")
+        ) {
+          var fileType = (this.MIME == "application/javascript" ? "js" : "css");
+          res.write(require("./lib/sourcemap")(this.result, files, fileType));
         }
+
+        res.end();
 
         var resurl = this.HOST + req.url;
         if (this.param.traceRule && this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
         }
-        res.end();
       }.bind(this));
     }
     else {
@@ -433,7 +414,7 @@ FlexCombo.prototype = {
   cacheFile: function (_url, buff) {
     var absPath = this.getCacheFilePath(_url);
     if (absPath && !/[<>\*\?]+/g.test(absPath)) {
-      fsLib.writeFile(absPath, buff, function(e) {
+      fsLib.writeFile(absPath, buff, function (e) {
         if (!e) {
           fsLib.chmod(absPath, 0777);
         }
