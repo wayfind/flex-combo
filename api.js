@@ -23,46 +23,45 @@ function FlexCombo(param, confFile) {
   this.engines = ENGINES.map(function (i) {
     return i;
   });
-  this.param = merge(true, require("./lib/param"));
   this.query = {};
   this.result = {};
   this.cacheDir = null;
 
+  this.param = require("./lib/param");
+  delete require.cache["./lib/param"];
+  param = param || {};
+
+  var confJSON = {};
   if (confFile) {
     this.cacheDir = pathLib.join(pathLib.dirname(confFile), "../.cache");
 
-    var confJSON = {};
+    if (!fsLib.existsSync(confFile)) {
+      fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
+      fsLib.chmod(confFile, 0777);
+    }
+
     try {
-      confJSON = JSON.parse(fsLib.readFileSync(confFile));
+      confJSON = require(confFile);
+      delete require.cache[confFile];
     }
     catch (e) {
       Helper.Log.error("Params Error!");
       confJSON = {};
     }
-    this.param = merge.recursive(true, this.param, confJSON, param || {});
-
-    if (confJSON.filter || param.filter) {
-      this.param.filter = merge(confJSON.filter || {}, param.filter || {});
-    }
-  }
-  else {
-    this.param = merge.recursive(true, this.param, param || {});
   }
 
-  var root = this.param.rootdir || "src";
-  if (root.indexOf('/') == 0 || /^\w{1}:\\.*$/.test(root)) {
-    this.param.rootdir = pathLib.normalize(root);
-  }
-  else {
-    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), root));
+  this.param = merge.recursive(true, this.param, confJSON, param);
+
+  if (confJSON.filter || param.filter) {
+    this.param.filter = merge(confJSON.filter || {}, param.filter || {});
   }
 
+  this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), this.param.rootdir || "src"));
   if (!this.param.urls['/']) {
     this.param.urls['/'] = this.param.rootdir;
   }
-
   if (!this.cacheDir) {
-    this.cacheDir = pathLib.join(this.param.rootdir, "../.cache");
+    this.cacheDir = pathLib.normalize(pathLib.join(this.param.rootdir, "../.cache"));
   }
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
     mkdirp(this.cacheDir, function(e, dir) {
@@ -75,7 +74,7 @@ function FlexCombo(param, confFile) {
 FlexCombo.prototype = {
   constructor: FlexCombo,
   parser: function (_url) {
-    var url = urlLib.parse(_url).path.replace(/\\|\/{1,}/g, '/');
+    var url = urlLib.parse(_url).path.replace(/[\\|\/]{1,}/g, '/');
     var prefix = url.indexOf(this.param.servlet + '?');
 
     if (prefix != -1) {
@@ -83,7 +82,7 @@ FlexCombo.prototype = {
       var file = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
-        return pathLib.join(base, i);
+        return pathLib.join(base, i).replace(/\\/g, '/');
       });
     }
     else {
@@ -154,7 +153,7 @@ FlexCombo.prototype = {
     this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
     this.MIME = mime.lookup(this.URL);
 
-    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
+    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
       suffix = suffix.concat(supportedFile.split('|'));
@@ -353,11 +352,46 @@ FlexCombo.prototype = {
           "X-MiddleWare": "flex-combo"
         });
 
-        var buff;
-        for (var i = 0; i < FLen; i++) {
-          buff = this.result[files[i]];
-          res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
+        var isSourceMap = this.req.originalUrl.indexOf("sourcemap") !== -1 && (
+          this.MIME == "application/javascript" || this.MIME == "text/css"
+        );
+        if (isSourceMap) {
+          var concat = require("source-map-concat");
+          var createDummySourceMap = require("source-map-dummy");
+          var inlineSourceMapComment = require('inline-source-map-comment');
+
+          var fileType = (this.MIME == "application/javascript" ? "js": "css");
+          var fileURI, fileBuff, concatFiles = [];
+
+          for (var i = 0; i < FLen; i++) {
+            fileURI = files[i];
+            fileBuff = this.result[fileURI];
+
+            concatFiles.push({
+              source: fileURI,
+              code: iconv.decode(fileBuff, isUtf8(fileBuff) ? "utf-8" : "gbk")
+            });
+          }
+
+          concatFiles.forEach(function (file) {
+            file.map = createDummySourceMap(file.code, {
+              source: file.source,
+              type: fileType
+            });
+          });
+          var result = concat(concatFiles, {delimiter: "\n"}).toStringWithSourceMap();
+          res.write(result.code + "\n" + inlineSourceMapComment(result.map.toString(), {
+            block: (fileType == "css" ? true: false)
+          }));
         }
+        else {
+          var buff;
+          for (var i = 0; i < FLen; i++) {
+            buff = this.result[files[i]];
+            res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
+          }
+        }
+
         var resurl = this.HOST + req.url;
         if (this.param.traceRule && this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
