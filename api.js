@@ -176,12 +176,6 @@ FlexCombo.prototype = {
       }
     }
 
-    // 解析mock配置
-    var mockConfFile = this.param.mock;
-    if(mockConfFile) {
-      require('./lib/parse-mock')(pathLib.join(process.cwd(), mockConfFile), this);
-    }
-
     for (var i = 0, len = this.engines.length; i < len; i++) {
       suffix.push(this.engines[i].rule);
     }
@@ -358,61 +352,44 @@ FlexCombo.prototype = {
           "X-MiddleWare": "flex-combo"
         });
 
-         /**
-         * 根据url中是否包含
-         */
-        var useSourcemap = this.req.originalUrl.indexOf('sourcemap') !== -1;
-
-        if(useSourcemap) {
-          // sourcemap related modules
-          var concat = require("source-map-concat")
-          var createDummySourceMap = require("source-map-dummy")
+        var isSourceMap = this.req.originalUrl.indexOf("sourcemap") !== -1 && (
+          this.MIME == "application/javascript" || this.MIME == "text/css"
+        );
+        if (isSourceMap) {
+          var concat = require("source-map-concat");
+          var createDummySourceMap = require("source-map-dummy");
           var inlineSourceMapComment = require('inline-source-map-comment');
 
-          var fileBuff,
-          // FIX toConcatFiles
-            fileType = pathLib.extname(files[0]).substring(1),
-            concatFiles = [];
-
-          fileType = fileType == 'less' ? 'css': fileType;
+          var fileType = (this.MIME == "application/javascript" ? "js": "css");
+          var fileURI, fileBuff, concatFiles = [];
 
           for (var i = 0; i < FLen; i++) {
-            var fileURI = files[i];
-
+            fileURI = files[i];
             fileBuff = this.result[fileURI];
 
-            // 为下面做
             concatFiles.push({
               source: fileURI,
-
-              code: fileBuff.toString('utf8')
+              code: iconv.decode(fileBuff, isUtf8(fileBuff) ? "utf-8" : "gbk")
             });
           }
 
           concatFiles.forEach(function (file) {
-            file.map = createDummySourceMap(file.code, {source: file.source, type: fileType})
+            file.map = createDummySourceMap(file.code, {
+              source: file.source,
+              type: fileType
+            });
           });
-
-          // 暂时使用"\n换行来分隔"
-          var concatenated = concat(concatFiles, {
-            delimiter: "\n"
-          });
-
-          var result = concatenated.toStringWithSourceMap({
-            file: pathLib.basename('concat-by-flexcombo.js')
-          });
-
-          res.write(result.code + '\n' + inlineSourceMapComment(result.map.toString(), {block: fileType == 'css'? true: false}));
-
-        // original 
-        } else {
-
+          var result = concat(concatFiles, {delimiter: "\n"}).toStringWithSourceMap();
+          res.write(result.code + "\n" + inlineSourceMapComment(result.map.toString(), {
+            block: (fileType == "css" ? true: false)
+          }));
+        }
+        else {
           var buff;
           for (var i = 0; i < FLen; i++) {
             buff = this.result[files[i]];
             res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
           }
-
         }
 
         var resurl = this.HOST + req.url;
