@@ -406,7 +406,7 @@ FlexCombo.prototype = {
           res.write(result.code + '\n' + inlineSourceMapComment(result.map.toString(), {block: fileType == 'css'? true: false}));
 
         // original 
-        else {
+        } else {
 
           var buff;
           for (var i = 0; i < FLen; i++) {
