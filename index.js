@@ -148,7 +148,7 @@ exports.engine = function (param, dir) {
       return;
     }
 
-    var url = file.path.replace(pathLib.join(process.cwd(), fcInst.param.rootdir), '');
+    var url = file.path.replace(fcInst.param.rootdir, '');
     fcInst.engineHandler(url, function () {
       var buff = fcInst.result[url];
       if (buff) {
