@@ -27,8 +27,7 @@ function FlexCombo(param, confFile) {
   this.result = {};
   this.cacheDir = null;
 
-  this.param = require("./lib/param");
-  delete require.cache["./lib/param"];
+  this.param = merge(true, require("./lib/param"));
   param = param || {};
 
   var confJSON = {};
