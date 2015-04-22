@@ -27,8 +27,7 @@ function FlexCombo(param, confFile) {
   this.result = {};
   this.cacheDir = null;
 
-  this.param = require("./lib/param");
-  delete require.cache["./lib/param"];
+  this.param = merge(true, require("./lib/param"));
   param = param || {};
 
   var confJSON = {};
@@ -56,7 +55,14 @@ function FlexCombo(param, confFile) {
     this.param.filter = merge(confJSON.filter || {}, param.filter || {});
   }
 
-  this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), this.param.rootdir || "src"));
+  var rootdir = this.param.rootdir || "src";
+  if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
+    this.param.rootdir = rootdir;
+  }
+  else {
+    this.param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
+  }
+
   if (!this.param.urls['/']) {
     this.param.urls['/'] = this.param.rootdir;
   }
@@ -64,7 +70,7 @@ function FlexCombo(param, confFile) {
     this.cacheDir = pathLib.normalize(pathLib.join(this.param.rootdir, "../.cache"));
   }
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
-    mkdirp(this.cacheDir, function(e, dir) {
+    mkdirp(this.cacheDir, function (e, dir) {
       fsLib.chmod(dir, 0777);
     });
   }
@@ -82,7 +88,7 @@ FlexCombo.prototype = {
       var file = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
-        return pathLib.join(base, i).replace(/\\/g, '/');
+        return urlLib.resolve(base, i);
       });
     }
     else {
@@ -150,7 +156,9 @@ FlexCombo.prototype = {
 
     this.HOST = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path.replace(/([^\?])\?[^\?].*$/, "$1");
+    this.URL = urlLib.parse(req.url).path
+      .replace(/([^\?])\?[^\?].*$/, "$1")
+      .replace(/\?{1,}$/, '');
     this.MIME = mime.lookup(this.URL);
 
     var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
@@ -272,7 +280,7 @@ FlexCombo.prototype = {
             tips = remoteURL + " Fetch Error!";
             self.result[_url] = new Buffer("/* " + tips + " */");
             Helper.Log.error(tips);
-            next(500);
+            next(null, 500);
           }
           else {
             if (nsres.statusCode == 404) {
@@ -284,7 +292,7 @@ FlexCombo.prototype = {
                 self.result[_url] = new Buffer("/* " + tips + " */");
               }
               Helper.Log.error(tips);
-              next(404);
+              next(null, 404);
             }
             else {
               self.cacheFile(_url, buff);
@@ -300,7 +308,7 @@ FlexCombo.prototype = {
       else {
         this.result[_url] = new Buffer("/* " + _url + " is NOT FOUND in Local, and flex-combo doesn't know the URL where the online assets exist! */");
         Helper.Log.error(_url + " Not Found!");
-        next(404);
+        next(null, 404);
       }
     }
     else {
@@ -345,58 +353,39 @@ FlexCombo.prototype = {
         );
       }
 
-      async.series(Q, function (statusCode) {
-        this.res.writeHead(statusCode || 200, {
+      async.series(Q, function (e, responseData) {
+        responseData = responseData.filter(function (elem, pos) {
+          return elem && responseData.indexOf(elem) == pos;
+        });
+
+        res.writeHead(responseData[0] || 200, {
           "Access-Control-Allow-Origin": '*',
           "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
           "X-MiddleWare": "flex-combo"
         });
 
-        var isSourceMap = this.req.originalUrl.indexOf("sourcemap") !== -1 && (
-          this.MIME == "application/javascript" || this.MIME == "text/css"
-        );
-        if (isSourceMap) {
-          var concat = require("source-map-concat");
-          var createDummySourceMap = require("source-map-dummy");
-          var inlineSourceMapComment = require('inline-source-map-comment');
-
-          var fileType = (this.MIME == "application/javascript" ? "js": "css");
-          var fileURI, fileBuff, concatFiles = [];
-
-          for (var i = 0; i < FLen; i++) {
-            fileURI = files[i];
-            fileBuff = this.result[fileURI];
-
-            concatFiles.push({
-              source: fileURI,
-              code: iconv.decode(fileBuff, isUtf8(fileBuff) ? "utf-8" : "gbk")
-            });
-          }
-
-          concatFiles.forEach(function (file) {
-            file.map = createDummySourceMap(file.code, {
-              source: file.source,
-              type: fileType
-            });
-          });
-          var result = concat(concatFiles, {delimiter: "\n"}).toStringWithSourceMap();
-          res.write(result.code + "\n" + inlineSourceMapComment(result.map.toString(), {
-            block: (fileType == "css" ? true: false)
-          }));
+        var fileURI, fileBuff;
+        for (var i = 0; i < FLen; i++) {
+          fileURI = files[i];
+          fileBuff = this.result[fileURI];
+          res.write(fileBuff ? fileBuff : new Buffer("/* " + fileURI + " Empty!*/"));
+          res.write("\n");
         }
-        else {
-          var buff;
-          for (var i = 0; i < FLen; i++) {
-            buff = this.result[files[i]];
-            res.write(buff ? buff : new Buffer("/* " + files[i] + " Empty!*/"));
-          }
+
+        if (
+          /[\?&]sourcemap\b/.test(req.url) &&
+          (this.MIME == "application/javascript" || this.MIME == "text/css")
+        ) {
+          var fileType = (this.MIME == "application/javascript" ? "js" : "css");
+          res.write(require("./lib/sourcemap")(this.result, files, fileType));
         }
+
+        res.end();
 
         var resurl = this.HOST + req.url;
         if (this.param.traceRule && this.param.traceRule.test("Response " + resurl)) {
           Helper.Log.response(resurl);
         }
-        res.end();
       }.bind(this));
     }
     else {
@@ -433,7 +422,7 @@ FlexCombo.prototype = {
   cacheFile: function (_url, buff) {
     var absPath = this.getCacheFilePath(_url);
     if (absPath && !/[<>\*\?]+/g.test(absPath)) {
-      fsLib.writeFile(absPath, buff, function(e) {
+      fsLib.writeFile(absPath, buff, function (e) {
         if (!e) {
           fsLib.chmod(absPath, 0777);
         }
