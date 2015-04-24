@@ -96,7 +96,14 @@ sudo flex-combo
 
 ### 支持SourceMap
 
-在URL的query中添加`sourcemap`以启用SourceMap功能
+在URL的query中添加`sourcemap`参数以启用SourceMap功能
+
+```
+eg.
+
+http://xxx.com/a.js?t=20150101&sourcemap
+http://xxx.com/??b.js,c.js?sourcemap
+```
 
 ## 命令参数
 
