@@ -51,10 +51,6 @@ function FlexCombo(param, confFile) {
 
   this.param = merge.recursive(true, this.param, confJSON, param);
 
-  if (confJSON.filter || param.filter) {
-    this.param.filter = merge(confJSON.filter || {}, param.filter || {});
-  }
-
   var rootdir = this.param.rootdir || "src";
   if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
     this.param.rootdir = rootdir;
