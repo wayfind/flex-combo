@@ -91,6 +91,10 @@ function init_config(dir, key, except) {
 exports = module.exports = function (param, dir) {
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
+  process.on("flex-combo", function(data) {
+    //console.log(data)
+  });
+
   return function () {
     fcInst = new API(param, confFile);
 
@@ -131,7 +135,6 @@ exports.engine = function (param, dir) {
   var through = require("through2");
 
   fcInst = new API(param, init_config(dir, "dac/tpl", ["filter"]));
-  fcInst.param.traceRule = false;
 
   return through.obj(function (file, enc, cb) {
     var self = this;
