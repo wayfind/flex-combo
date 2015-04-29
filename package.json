@@ -16,6 +16,7 @@
     "merge": "~1.2.0",
     "mime": "~1.3.4",
     "mkdirp": "~0.5.0",
+    "plug-trace": "~0.0.2",
     "source-map-concat": "~1.0.0",
     "source-map-dummy": "~1.0.0",
     "through2": "~0.6.5"

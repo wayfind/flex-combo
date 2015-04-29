@@ -6,6 +6,7 @@ var API = require("./api");
 var DAC = require("dac");
 var fsLib = require("fs");
 var pathLib = require("path");
+var trace = require("plug-trace");
 
 var pkg = require(__dirname + "/package.json");
 require("check-update")({
@@ -36,7 +37,7 @@ function init_config(dir, key, except) {
   var mkdirp = require("mkdirp");
 
   if (dir) {
-    var confDir, confFile, json = pathLib.basename(__dirname) + ".json";
+    var confDir, confFile, json = pkg.name + ".json";
     if (dir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(dir)) {
       if (/\.json$/.test(dir)) {
         confFile = dir;
@@ -91,8 +92,9 @@ function init_config(dir, key, except) {
 exports = module.exports = function (param, dir) {
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
-  process.on("flex-combo", function(data) {
-    //console.log(data)
+  process.on(pkg.name, function (data) {
+    console.log("=== Served by %s ===", trace.chalk.white(pkg.name));
+    trace(data);
   });
 
   return function () {
@@ -131,12 +133,20 @@ exports = module.exports = function (param, dir) {
 };
 
 exports.API = API;
+exports.name = pkg.name;
 exports.engine = function (param, dir) {
   var through = require("through2");
+  var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
-  fcInst = new API(param, init_config(dir, "dac/tpl", ["filter"]));
+  process
+    .removeAllListeners(pkg.name)
+    .on(pkg.name, function (data) {
+      trace(data, "error");
+    });
 
   return through.obj(function (file, enc, cb) {
+    fcInst = new API(param, confFile);
+
     var self = this;
 
     if (file.isNull()) {
@@ -151,9 +161,7 @@ exports.engine = function (param, dir) {
       return;
     }
 
-    var url = file.path.replace(fcInst.param.rootdir, '');
-    fcInst.engineHandler(url, function () {
-      var buff = fcInst.result[url];
+    fcInst.stream(file.path, function (buff) {
       if (buff) {
         file.contents = buff;
       }

@@ -6,9 +6,8 @@ var async = require("async");
 var mkdirp = require("mkdirp");
 var merge = require("merge");
 var fetch = require("fetch-agent");
-
+var Stack = require("plug-trace").stack;
 var Helper = require("./lib/util");
-var Trace = require("./lib/trace");
 
 var ENGINES = [];
 
@@ -25,10 +24,10 @@ function FlexCombo(param, confFile) {
   this.result = {};
   this.cacheDir = null;
 
-  this.trace = new Trace();
-
   this.param = merge(true, require("./lib/param"));
   param = param || {};
+
+  this.trace = new Stack(require(__dirname + "/package.json").name);
 
   var confJSON = {};
   if (confFile) {
@@ -230,9 +229,6 @@ FlexCombo.prototype = {
         if (/^\/favicon\.ico$/.test(_url)) {
           this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "assets/favicon.ico"));
         }
-        else {
-          this.trace.warn(absPath + " Not Found!", "IO");
-        }
       }
     }
 
@@ -277,7 +273,7 @@ FlexCombo.prototype = {
             else {
               self.cacheFile(_url, buff);
               self.result[_url] = buff;
-              self.trace.remote(_url, requestOption);
+              self.trace.remote(self.HOST + _url, requestOption.host);
               next();
             }
           }
@@ -335,6 +331,14 @@ FlexCombo.prototype = {
     suffix = Helper.unique(suffix);
 
     return new RegExp(suffix.join('|')).test(this.URL);
+  },
+  stream: function (absPath, cb) {
+    var _url = absPath.replace(this.param.rootdir, '');
+    this.trace.request(this.param.rootdir, _url);
+    this.engineHandler(_url, function () {
+      cb(this.result[_url]);
+      this.trace.response(absPath);
+    }.bind(this));
   },
   handle: function (req, res, next) {
     if (this.init(req, res)) {
