@@ -229,6 +229,9 @@ FlexCombo.prototype = {
         if (/^\/favicon\.ico$/.test(_url)) {
           this.result[_url] = fsLib.readFileSync(pathLib.join(__dirname, "assets/favicon.ico"));
         }
+        else {
+          this.trace.warn(absPath, "Not in Local");
+        }
       }
     }
 
