@@ -134,6 +134,7 @@ exports = module.exports = function (param, dir) {
 
 exports.API = API;
 exports.name = pkg.name;
+exports.config = require("./lib/param");
 exports.engine = function (param, dir) {
   var through = require("through2");
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
