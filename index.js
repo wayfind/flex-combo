@@ -96,7 +96,7 @@ exports = module.exports = function (param, dir) {
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
   process.on(pkg.name, function (data) {
-    console.log("=== Served by %s ===", trace.chalk.white(pkg.name));
+    console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
     trace(data);
   });
 
