@@ -69,7 +69,7 @@ function FlexCombo(param, confFile) {
       fsLib.chmod(dir, 0777);
     });
   }
-};
+}
 FlexCombo.prototype = {
   constructor: FlexCombo,
   parser: function (_url) {
