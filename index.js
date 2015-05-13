@@ -22,20 +22,6 @@ if (!new RegExp("clam$").test(starter)) {
   });
 }
 
-var fcInst = new API();
-fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
-fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
-  DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
-    if (typeof result != "undefined") {
-      fsLib.writeFile(htmlfile, result, function () {
-        fsLib.chmod(htmlfile, 0777);
-      });
-    }
-    cb(err, result || '', filepath, MIME);
-  });
-}, "dac/tpl");
-
 function init_config(dir, key, except) {
   var mkdirp = require("mkdirp");
 
@@ -92,7 +78,22 @@ function init_config(dir, key, except) {
   }
 }
 
+var fcInst = new API();
+
 exports = module.exports = function (param, dir) {
+  fcInst.addEngine("\\.less\\.css$|\\.less\\.css\\.map$", DAC.less, "dac/less");
+  fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
+  fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, args, cb) {
+    DAC.tpl(htmlfile, reqOpt, args, function (err, result, filepath, MIME) {
+      if (typeof result != "undefined") {
+        fsLib.writeFile(htmlfile, result, function () {
+          fsLib.chmod(htmlfile, 0777);
+        });
+      }
+      cb(err, result || '', filepath, MIME);
+    });
+  }, "dac/tpl");
+
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
 
   process.on(pkg.name, function (data) {
@@ -139,6 +140,9 @@ exports.API = API;
 exports.name = pkg.name;
 exports.config = require("./lib/param");
 exports.engine = function (param, dir) {
+  fcInst.addEngine("\\.less$", DAC.less, "dac/less");
+  fcInst.addEngine("\\.tpl$", DAC.tpl, "dac/tpl");
+
   var through = require("through2");
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
 

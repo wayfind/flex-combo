@@ -48,7 +48,7 @@ function FlexCombo(param, confFile) {
     }
   }
 
-  this.param = merge.recursive(true, this.param, confJSON, param);
+  this.param = merge.recursive(true, this.param, param, confJSON);
 
   var rootdir = this.param.rootdir || "src";
   if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
@@ -305,7 +305,7 @@ FlexCombo.prototype = {
       .replace(/\?{1,}$/, '');
     this.MIME = mime.lookup(this.URL);
 
-    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
+    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.webp$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
       suffix = suffix.concat(supportedFile.split('|'));
@@ -401,7 +401,9 @@ FlexCombo.prototype = {
           (this.MIME == "application/javascript" || this.MIME == "text/css")
         ) {
           var fileType = (this.MIME == "application/javascript" ? "js" : "css");
-          res.write(require("./lib/sourcemap")(this.result, files, fileType));
+          if (files.length >1) {
+            res.write(require("./lib/sourcemap")(this.result, files, fileType));
+          }
         }
 
         this.trace.response(this.HOST + req.url);
