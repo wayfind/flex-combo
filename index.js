@@ -6,37 +6,27 @@ var API = require("./api");
 var DAC = require("dac");
 var fsLib = require("fs");
 var pathLib = require("path");
+var trace = require("plug-trace");
 
 var pkg = require(__dirname + "/package.json");
-require("check-update")({
-  packageName: pkg.name,
-  packageVersion: pkg.version,
-  isCLI: process.title == "node"
-}, function (err, latestVersion, defaultMessage) {
-  if (!err && pkg.version < latestVersion) {
-    console.log(defaultMessage);
-  }
-});
-
-var fcInst = new API();
-fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
-fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, param, cb) {
-  DAC.tpl(htmlfile, reqOpt, param, function (err, result, filepath, MIME) {
-    if (typeof result != "undefined") {
-      fsLib.writeFile(htmlfile, result, function () {
-        fsLib.chmod(htmlfile, 0777);
-      });
+var starter = process.argv[1];
+if (!new RegExp("clam$").test(starter)) {
+  require("check-update")({
+    packageName: pkg.name,
+    packageVersion: pkg.version,
+    isCLI: new RegExp(pkg.name + '$').test(starter)
+  }, function (err, latestVersion, defaultMessage) {
+    if (!err && pkg.version < latestVersion) {
+      console.log(defaultMessage);
     }
-    cb(err, result || '', filepath, MIME);
   });
-}, "dac/tpl");
+}
 
 function init_config(dir, key, except) {
   var mkdirp = require("mkdirp");
 
   if (dir) {
-    var confDir, confFile, json = pathLib.basename(__dirname) + ".json";
+    var confDir, confFile, json = pkg.name + ".json";
     if (dir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(dir)) {
       if (/\.json$/.test(dir)) {
         confFile = dir;
@@ -88,8 +78,28 @@ function init_config(dir, key, except) {
   }
 }
 
+var fcInst = new API();
+
 exports = module.exports = function (param, dir) {
+  fcInst.addEngine("\\.less\\.css$|\\.less\\.css\\.map$", DAC.less, "dac/less");
+  fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
+  fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, args, cb) {
+    DAC.tpl(htmlfile, reqOpt, args, function (err, result, filepath, MIME) {
+      if (typeof result != "undefined") {
+        fsLib.writeFile(htmlfile, result, function () {
+          fsLib.chmod(htmlfile, 0777);
+        });
+      }
+      cb(err, result || '', filepath, MIME);
+    });
+  }, "dac/tpl");
+
   var confFile = init_config(dir, "dac/tpl", ["filter"]);
+
+  process.on(pkg.name, function (data) {
+    console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
+    trace(data);
+  });
 
   return function () {
     fcInst = new API(param, confFile);
@@ -127,13 +137,24 @@ exports = module.exports = function (param, dir) {
 };
 
 exports.API = API;
+exports.name = pkg.name;
+exports.config = require("./lib/param");
 exports.engine = function (param, dir) {
-  var through = require("through2");
+  fcInst.addEngine("\\.less$", DAC.less, "dac/less");
+  fcInst.addEngine("\\.tpl$", DAC.tpl, "dac/tpl");
 
-  fcInst = new API(param, init_config(dir, "dac/tpl", ["filter"]));
-  fcInst.param.traceRule = false;
+  var through = require("through2");
+  var confFile = init_config(dir, "dac/tpl", ["filter"]);
+
+  process
+    .removeAllListeners(pkg.name)
+    .on(pkg.name, function (data) {
+      trace(data, "error");
+    });
 
   return through.obj(function (file, enc, cb) {
+    fcInst = new API(param, confFile);
+
     var self = this;
 
     if (file.isNull()) {
@@ -148,9 +169,7 @@ exports.engine = function (param, dir) {
       return;
     }
 
-    var url = file.path.replace(fcInst.param.rootdir, '');
-    fcInst.engineHandler(url, function () {
-      var buff = fcInst.result[url];
+    fcInst.stream(file.path, function (buff) {
       if (buff) {
         file.contents = buff;
       }
