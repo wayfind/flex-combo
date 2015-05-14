@@ -41,6 +41,8 @@ function FlexCombo(param, confFile) {
     try {
       confJSON = require(confFile);
       delete require.cache[confFile];
+
+      param.hosts = merge.recursive(param.hosts, confJSON.hosts || {});
     }
     catch (e) {
       this.trace.error("Can't require config file!", "IO");
@@ -48,7 +50,7 @@ function FlexCombo(param, confFile) {
     }
   }
 
-  this.param = merge.recursive(true, this.param, param, confJSON);
+  this.param = merge.recursive(true, this.param, confJSON, param);
 
   var rootdir = this.param.rootdir || "src";
   if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
@@ -305,7 +307,7 @@ FlexCombo.prototype = {
       .replace(/\?{1,}$/, '');
     this.MIME = mime.lookup(this.URL);
 
-    var suffix = ["\\.tpl$", "\\.phtml$", "\\.js$", "\\.css$", "\\.webp$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
+    var suffix = ["\\.js$", "\\.css$", "\\.webp$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
       suffix = suffix.concat(supportedFile.split('|'));
@@ -397,18 +399,19 @@ FlexCombo.prototype = {
         }
 
         if (
-          /[\?&]sourcemap\b/.test(req.url) &&
-          (this.MIME == "application/javascript" || this.MIME == "text/css")
+          files.length > 1
+          && /[\?&]_sourcemap\b/.test(req.url)
+          && ["application/javascript", "text/css"].indexOf(this.MIME) != -1
         ) {
-          var fileType = (this.MIME == "application/javascript" ? "js" : "css");
-          if (files.length >1) {
-            res.write(require("./lib/sourcemap")(this.result, files, fileType));
-          }
+          res.write(require("./lib/sourcemap")(
+            this.result,
+            files,
+            (this.MIME == "application/javascript" ? "js" : "css")
+          ));
         }
 
-        this.trace.response(this.HOST + req.url);
-
         res.end();
+        this.trace.response(this.HOST + req.url);
       }.bind(this));
     }
     else {
