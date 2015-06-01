@@ -98,10 +98,13 @@ FlexCombo.prototype = {
     return false;
   },
   addEngine: function (rule, func, p, realtime) {
-    if (rule && typeof func == "function") {
+    var index = ["object", "function"].indexOf(typeof func);
+    if (rule && index != -1) {
       (realtime ? this.engines : ENGINES).push({
         rule: rule,
-        func: func,
+        func: index ? func : function (absPath, reqOpt, param, cb) {
+          cb(false, JSON.stringify(func), absPath);
+        },
         path: p
       });
     }
@@ -324,6 +327,7 @@ FlexCombo.prototype = {
         mod = pathLib.join(process.cwd(), path);
         if (fsLib.existsSync(mod) || fsLib.existsSync(mod + ".js")) {
           this.addEngine(k, require(mod), path, true);
+          delete require.cache[mod + ".js"];
         }
 
         this.param.urls[pathLib.dirname(this.URL)] = pathLib.dirname(mod);
@@ -390,12 +394,13 @@ FlexCombo.prototype = {
           "X-MiddleWare": "flex-combo"
         });
 
-        var fileURI, fileBuff;
+        var fileURI, fileBuff, buffArr = [];
         for (var i = 0; i < FLen; i++) {
           fileURI = files[i];
-          fileBuff = this.result[fileURI];
-          res.write(fileBuff ? fileBuff : new Buffer("/* " + fileURI + " Empty!*/"));
+          fileBuff = this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/");
+          res.write(fileBuff);
           res.write("\n");
+          buffArr.push(fileBuff);
         }
 
         if (
@@ -411,7 +416,7 @@ FlexCombo.prototype = {
         }
 
         res.end();
-        this.trace.response(this.HOST + req.url);
+        this.trace.response(this.HOST + req.url, Buffer.concat(buffArr));
       }.bind(this));
     }
     else {
