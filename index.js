@@ -9,18 +9,6 @@ var pathLib = require("path");
 var trace = require("plug-trace");
 
 var pkg = require(__dirname + "/package.json");
-var starter = process.argv[1];
-if (!new RegExp("clam$").test(starter)) {
-  require("check-update")({
-    packageName: pkg.name,
-    packageVersion: pkg.version,
-    isCLI: new RegExp(pkg.name + '$').test(starter)
-  }, function (err, latestVersion, defaultMessage) {
-    if (!err && pkg.version < latestVersion) {
-      console.log(defaultMessage);
-    }
-  });
-}
 
 function init_config(dir, key, except) {
   var mkdirp = require("mkdirp");

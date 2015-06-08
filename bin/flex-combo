@@ -106,7 +106,7 @@ https.createServer({
       var createSecureContext = require("tls").createSecureContext;
 
       if (!(typeof SNICallback == "function" && createSecureContext)) {
-        console.log("Your Node.js IS NOT support Async SNI, please UPDATE your Node.js >= 0.11");
+        console.log("Your Node.js IS NOT support Async SNI, please UPDATE your Node.js >= 0.12");
         return;
       }
 
