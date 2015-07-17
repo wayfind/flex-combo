@@ -138,30 +138,34 @@ Options 如下:
 
 ```
 {
-    "rootdir": "src",
-    "urls": {
-        "/xxx": "/Users/david/xxxproject"
-     },
-    "charset": "utf-8",
-    "urlBasedCharset": {},
-    "hosts": {
-        "a.cdn.cn":"122.225.67.241",
-        "g.cdn.cn":"115.238.23.250"
-    },
-    "cache": true,
-    "headers": {"host":"a.cdn.cn"},
-    "hostIp": "115.238.23.241",
-    "servlet": "?",
-    "seperator": ",",
-    "engine": {
-      "^/mock/.+\\.json$":"mock/index.js"
-    },
-    "filter": {
-        "\\?.+": "",
-        "-min\\.js$": ".js",
-        "-min\\.css$": ".css"
-    },
-    "traceRule": ""
+  "rootdir": "src",
+  "urls": {
+    "/xxx": "/Users/david/xxxproject"
+   },
+  "charset": "utf-8",
+  "urlBasedCharset": {},
+  "hosts": {
+    "a.cdn.cn":"122.225.67.241",
+    "g.cdn.cn":"115.238.23.250"
+  },
+  "cache": true,
+  "headers": {"host":"a.cdn.cn"},
+  "hostIp": "115.238.23.241",
+  "servlet": "?",
+  "seperator": ",",
+  "engine": {
+    "^/mock/.+\\.json$":"mock/index.js"
+  },
+  "filter": {
+    "\\?.+": "",
+    "-min\\.js$": ".js",
+    "-min\\.css$": ".css"
+  },
+  "dac/tpl": {
+    "define": "KISSY.add",
+    "anonymous": false,
+    "filter": {}
+  }
 }
 ```
 #### rootdir
