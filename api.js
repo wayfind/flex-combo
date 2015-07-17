@@ -327,6 +327,7 @@ FlexCombo.prototype = {
         mod = pathLib.join(process.cwd(), path);
         if (fsLib.existsSync(mod) || fsLib.existsSync(mod + ".js")) {
           this.addEngine(k, require(mod), path, true);
+          delete require.cache[mod];
           delete require.cache[mod + ".js"];
         }
 
