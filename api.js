@@ -27,7 +27,8 @@ function FlexCombo(param, confFile) {
   this.param = merge(true, require("./lib/param"));
   param = param || {};
 
-  this.trace = new Stack(require(__dirname + "/package.json").name);
+  var pkgName = require(__dirname + "/package.json").name;
+  this.trace = new Stack(pkgName);
 
   var confJSON = {};
   if (confFile) {
@@ -66,10 +67,12 @@ function FlexCombo(param, confFile) {
   if (!this.cacheDir) {
     this.cacheDir = pathLib.normalize(pathLib.join(this.param.rootdir, "../.cache"));
   }
+  this.cacheDir = pathLib.join(this.cacheDir, pkgName);
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
     mkdirp(this.cacheDir, function (e, dir) {
       fsLib.chmod(dir, 0777);
-    });
+      fsLib.chmod(this.cacheDir, 0777);
+    }.bind(this));
   }
 }
 FlexCombo.prototype = {
