@@ -189,7 +189,12 @@ FlexCombo.prototype = {
     return pathLib.normalize(pathLib.join(repPath, revPath));
   },
   engineHandler: function (_url, next) {
-    var filteredURL = this.filteredUrl(_url, true);
+    var eUrl = _url;
+    // .css找不到尝试找.less
+    if (!/\.less/.test(_url)) {
+      eUrl = _url.replace(/\.css$/, ".less.css");
+    }
+    var filteredURL = this.filteredUrl(eUrl, true);
     var absPath = this.getRealPath(filteredURL);
 
     var matchedIndex = -1;

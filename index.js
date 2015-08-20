@@ -2,11 +2,11 @@
  * 主入口
  * 通过require("flex-combo")
  * */
-var API = require("./api");
-var DAC = require("dac");
 var fsLib = require("fs");
 var pathLib = require("path");
+var DAC = require("dac");
 var trace = require("plug-trace");
+var API = require("./api");
 
 var pkg = require(__dirname + "/package.json");
 
@@ -112,6 +112,9 @@ exports = module.exports = function (param, dir) {
 
     try {
       if (req && res && next) {
+        if (res._header) {
+          return next();
+        }
         fcInst.handle(req, res, next);
       }
       else {
