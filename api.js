@@ -82,7 +82,7 @@ FlexCombo.prototype = {
     var prefix = url.indexOf(this.param.servlet + '?');
 
     if (prefix != -1) {
-      var base = url.slice(0, prefix);
+      var base = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
       var file = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
