@@ -397,20 +397,25 @@ FlexCombo.prototype = {
       async.series(Q, function (e, responseData) {
         responseData = Helper.unique(responseData);
 
+        var fileURI, buffArr = [];
+        for (var i = 0; i < FLen; i++) {
+          fileURI = files[i];
+          buffArr.push(
+            this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/"),
+            new Buffer("\n")
+          );
+        }
+
+        var content = Buffer.concat(buffArr);
+
         res.writeHead(responseData[0] || 200, {
           "Access-Control-Allow-Origin": '*',
           "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
+          "Content-Length": Buffer.byteLength(content),
           "X-MiddleWare": "flex-combo"
         });
 
-        var fileURI, fileBuff, buffArr = [];
-        for (var i = 0; i < FLen; i++) {
-          fileURI = files[i];
-          fileBuff = this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/");
-          res.write(fileBuff);
-          res.write("\n");
-          buffArr.push(fileBuff);
-        }
+        res.write(content);
 
         if (
           files.length > 1
@@ -425,7 +430,7 @@ FlexCombo.prototype = {
         }
 
         res.end();
-        this.trace.response(this.HOST + req.url, Buffer.concat(buffArr));
+        this.trace.response(this.HOST + req.url, content);
       }.bind(this));
     }
     else {
