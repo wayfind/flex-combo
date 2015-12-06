@@ -397,13 +397,14 @@ FlexCombo.prototype = {
       async.series(Q, function (e, responseData) {
         responseData = Helper.unique(responseData);
 
+        var isText = ["application/javascript", "text/css"].indexOf(this.MIME) != -1;
         var fileURI, buffArr = [];
         for (var i = 0; i < FLen; i++) {
           fileURI = files[i];
-          buffArr.push(
-            this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/"),
-            new Buffer("\n")
-          );
+          buffArr.push(this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/"));
+          if (isText) {
+            buffArr.push(new Buffer("\n"));
+          }
         }
 
         var content = Buffer.concat(buffArr);
@@ -411,7 +412,7 @@ FlexCombo.prototype = {
         res.writeHead(responseData[0] || 200, {
           "Access-Control-Allow-Origin": '*',
           "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
-          "Content-Length": Buffer.byteLength(content),
+          "Content-Length": content.length,
           "X-MiddleWare": "flex-combo"
         });
 
@@ -420,7 +421,7 @@ FlexCombo.prototype = {
         if (
           files.length > 1
           && /[\?&]_sourcemap\b/.test(req.url)
-          && ["application/javascript", "text/css"].indexOf(this.MIME) != -1
+          && isText
         ) {
           res.write(require("./lib/sourcemap")(
             this.result,
