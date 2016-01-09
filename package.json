@@ -1,24 +1,24 @@
 {
   "name": "flex-combo",
-  "version": "0.12.17",
+  "version": "0.13.2",
   "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
   "main": "index.js",
   "bin": {
     "flex-combo": "./bin/flex-combo"
   },
   "dependencies": {
-    "async": "~0.9.0",
+    "async": "~1.5.2",
     "commander": "~2.5.0",
-    "dac": "~0.6.5",
-    "fetch-agent": "~0.4.0",
+    "dac": "~0.7.2",
+    "fetch-agent": "~0.4.1",
     "inline-source-map-comment": "~1.0.5",
     "merge": "~1.2.0",
     "mime": "~1.3.4",
-    "mkdirp": "~0.5.0",
+    "mkdirp": "~0.5.1",
     "plug-trace": "~0.1.5",
     "source-map-concat": "~1.0.0",
     "source-map-dummy": "~1.0.0",
-    "through2": "~0.6.5"
+    "through2": "~2.0.0"
   },
   "repository": {
     "type": "git",

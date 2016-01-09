@@ -351,6 +351,7 @@ FlexCombo.prototype = {
     return new RegExp(suffix.join('|')).test(this.URL);
   },
   stream: function (absPath, cb) {
+    absPath = pathLib.resolve(absPath);
     var _url = absPath.replace(this.param.rootdir, '');
     this.trace.request(this.param.rootdir, _url);
     this.engineHandler(_url, function () {
@@ -397,25 +398,31 @@ FlexCombo.prototype = {
       async.series(Q, function (e, responseData) {
         responseData = Helper.unique(responseData);
 
+        var isText = ["application/javascript", "text/css"].indexOf(this.MIME) != -1;
+        var fileURI, buffArr = [];
+        for (var i = 0; i < FLen; i++) {
+          fileURI = files[i];
+          buffArr.push(this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/"));
+          if (isText) {
+            buffArr.push(new Buffer("\n"));
+          }
+        }
+
+        var content = Buffer.concat(buffArr);
+
         res.writeHead(responseData[0] || 200, {
           "Access-Control-Allow-Origin": '*',
           "Content-Type": this.MIME + (Helper.isBinFile(this.URL) ? '' : ";charset=" + this.param.charset),
+          "Content-Length": content.length,
           "X-MiddleWare": "flex-combo"
         });
 
-        var fileURI, fileBuff, buffArr = [];
-        for (var i = 0; i < FLen; i++) {
-          fileURI = files[i];
-          fileBuff = this.result[fileURI] ? this.result[fileURI] : new Buffer("/* " + fileURI + " Empty!*/");
-          res.write(fileBuff);
-          res.write("\n");
-          buffArr.push(fileBuff);
-        }
+        res.write(content);
 
         if (
           files.length > 1
           && /[\?&]_sourcemap\b/.test(req.url)
-          && ["application/javascript", "text/css"].indexOf(this.MIME) != -1
+          && isText
         ) {
           res.write(require("./lib/sourcemap")(
             this.result,
@@ -425,7 +432,7 @@ FlexCombo.prototype = {
         }
 
         res.end();
-        this.trace.response(this.HOST + req.url, Buffer.concat(buffArr));
+        this.trace.response(this.HOST + req.url, content);
       }.bind(this));
     }
     else {
