@@ -71,6 +71,7 @@ var fcInst = new API();
 exports = module.exports = function (param, dir) {
   fcInst.addEngine("\\.less\\.css$|\\.less\\.css\\.map$", DAC.less, "dac/less");
   fcInst.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
+  fcInst.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
   fcInst.addEngine("\\.tpl\\.js$", DAC.tpl, "dac/tpl");
   fcInst.addEngine("\\.html\\.js$", function (htmlfile, reqOpt, args, cb) {
     DAC.tpl(htmlfile, reqOpt, args, function (err, result, filepath, MIME) {
@@ -131,6 +132,7 @@ exports.config = require("./lib/param");
 exports.engine = function (param, dir) {
   fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
   fcInst.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
+  fcInst.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
   fcInst.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
 
   var through = require("through2");

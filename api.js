@@ -351,6 +351,7 @@ FlexCombo.prototype = {
     return new RegExp(suffix.join('|')).test(this.URL);
   },
   stream: function (absPath, cb) {
+    absPath = pathLib.resolve(absPath);
     var _url = absPath.replace(this.param.rootdir, '');
     this.trace.request(this.param.rootdir, _url);
     this.engineHandler(_url, function () {
