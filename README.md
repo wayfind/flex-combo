@@ -165,6 +165,13 @@ Options 如下:
     "define": "KISSY.add",
     "anonymous": false,
     "filter": {}
+  },
+  "dac/cmd": {
+    "enable": true,
+    "ignore": ""
+  },
+  "dac/polymer": {
+    "filter": {}
   }
 }
 ```
