@@ -168,7 +168,7 @@ Options 如下:
   },
   "dac/cmd": {
     "enable": true,
-    "ignore": ""
+    "ignore": []
   },
   "dac/polymer": {
     "filter": {}
