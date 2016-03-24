@@ -167,9 +167,9 @@ Options 如下:
     "anonymous": false,
     "filter": {}
   },
-  "dac/cmd": {
-    "enable": false,
-    "ignore": []
+  "dac/xmd": {
+    "cmd": [],
+    "kmd": []
   },
   "dac/polymer": {
     "filter": {}
