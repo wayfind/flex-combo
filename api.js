@@ -1,34 +1,34 @@
-var urlLib = require("url");
+var urlLib  = require("url");
 var pathLib = require("path");
-var fsLib = require("fs");
-var mime = require("mime");
-var async = require("async");
-var mkdirp = require("mkdirp");
-var merge = require("merge");
-var fetch = require("fetch-agent");
-var Stack = require("plug-trace").stack;
-var Helper = require("./lib/util");
+var fsLib   = require("fs");
+var mime    = require("mime");
+var async   = require("async");
+var mkdirp  = require("mkdirp");
+var merge   = require("merge");
+var fetch   = require("fetch-agent");
+var Stack   = require("plug-trace").stack;
+var Helper  = require("./lib/util");
 
 var ENGINES = [];
 
 function FlexCombo(param, confFile) {
-  this.HOST = null;
-  this.URL = null;
-  this.MIME = null;
-  this.req = null;
-  this.res = null;
-  this.engines = ENGINES.map(function (i) {
+  this.HOST     = null;
+  this.URL      = null;
+  this.MIME     = null;
+  this.req      = null;
+  this.res      = null;
+  this.engines  = ENGINES.map(function (i) {
     return i;
   });
-  this.query = {};
-  this.result = {};
+  this.query    = {};
+  this.result   = {};
   this.cacheDir = null;
 
   this.param = merge(true, require("./lib/param"));
-  param = param || {};
+  param      = param || {};
 
   var pkgName = require(__dirname + "/package.json").name;
-  this.trace = new Stack(pkgName);
+  this.trace  = new Stack(pkgName);
 
   var confJSON = {};
   if (confFile) {
@@ -78,12 +78,12 @@ function FlexCombo(param, confFile) {
 FlexCombo.prototype = {
   constructor: FlexCombo,
   parser: function (_url) {
-    var url = urlLib.parse(_url).path.replace(/[\\|\/]{1,}/g, '/');
+    var url    = urlLib.parse(_url).path.replace(/[\\|\/]{1,}/g, '/');
     var prefix = url.indexOf(this.param.servlet + '?');
 
     if (prefix != -1) {
-      var base = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
-      var file = url.slice(prefix + this.param.servlet.length + 1);
+      var base     = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
+      var file     = url.slice(prefix + this.param.servlet.length + 1);
       var filelist = file.split(this.param.seperator, 1000);
       return filelist.map(function (i) {
         return urlLib.resolve(base, i);
@@ -122,11 +122,11 @@ FlexCombo.prototype = {
       return false;
     }
 
-    var protocol = (this.req.connection.encrypted ? "https" : "http") + ':';
-    var H = this.req.headers.host.split(':');
-    var reqPort = H[1] || (protocol == "https:" ? 443 : 80);
+    var protocol    = (this.req.connection.encrypted ? "https" : "http") + ':';
+    var H           = this.req.headers.host.split(':');
+    var reqPort     = H[1] || (protocol == "https:" ? 443 : 80);
     var reqHostName = H[0];
-    var reqHostIP = reqHostName;
+    var reqHostIP   = reqHostName;
     if (this.param.hostIp) {
       reqHostIP = this.param.hostIp;
     }
@@ -134,7 +134,7 @@ FlexCombo.prototype = {
       reqHostIP = this.param.hosts[reqHostName];
     }
 
-    var requestOption = {
+    var requestOption     = {
       protocol: protocol,
       host: reqHostIP,
       port: reqPort,
@@ -154,7 +154,7 @@ FlexCombo.prototype = {
   filteredUrl: function (_url, isTrace) {
     var _filter = this.param.filter || {};
     var jsonstr = JSON.stringify(_filter).replace(/\\{2}/g, '\\');
-    var filter = [];
+    var filter  = [];
     jsonstr.replace(/[\{\,]"([^"]*?)"/g, function (all, key) {
       filter.push(key);
     });
@@ -164,7 +164,7 @@ FlexCombo.prototype = {
       regx = new RegExp(filter[k]);
       if (regx.test(_url)) {
         ori_url = _url;
-        _url = _url.replace(regx, _filter[filter[k]]);
+        _url    = _url.replace(regx, _filter[filter[k]]);
         if (isTrace) {
           this.trace.filter(regx, ori_url, _url);
         }
@@ -174,15 +174,15 @@ FlexCombo.prototype = {
   },
   getRealPath: function (_url) {
     var map = this.param.urls || {};
-    _url = (/^\//.test(_url) ? '' : '/') + _url;
+    _url    = (/^\//.test(_url) ? '' : '/') + _url;
 
     // urls中key对应的实际目录
     var repPath = '', revPath = _url, longestMatchNum = 0;
     for (var k in map) {
       if (_url.indexOf(k) == 0 && longestMatchNum < k.length) {
         longestMatchNum = k.length;
-        repPath = map[k];
-        revPath = _url.slice(longestMatchNum);
+        repPath         = map[k];
+        revPath         = _url.slice(longestMatchNum);
       }
     }
 
@@ -195,29 +195,51 @@ FlexCombo.prototype = {
       eUrl = _url.replace(/\.css$/, ".less.css");
     }
     var filteredURL = this.filteredUrl(eUrl, true);
-    var absPath = this.getRealPath(filteredURL);
+    var absPath     = this.getRealPath(filteredURL);
 
-    var matchedIndex = -1;
-    for (var i = this.engines.length - 1, matched = null, matchedNum = -1; i >= 0; i--) {
-      matched = filteredURL.match(new RegExp(this.engines[i].rule));
-      if (matched && matched[0].length > matchedNum && typeof this.engines[i].func == "function") {
-        matchedNum = matched[0].length;
-        matchedIndex = i;
+    var Q = [];
+    var self = this;
+    var reqOpt = this.buildRequestOption(filteredURL);
+    this.engines.forEach(function(engine) {
+      if (new RegExp(engine.rule).test(filteredURL)) {
+        if (Q.length) {
+          Q.push((function() {
+            return function (content, callback) {
+              engine.func(
+                {content:content}, reqOpt,
+                merge.recursive(true, self.param[engine.path] || {}, self.query),
+                function (e, result) {
+                  callback(e, result);
+                }
+              );
+            }
+          })(engine));
+        }
+        else {
+          Q.push((function () {
+            return function (callback) {
+              engine.func(
+                absPath, reqOpt,
+                merge.recursive(true, self.param[engine.path] || {}, self.query),
+                function (e, result, realPath, MIME) {
+                  self.MIME = MIME;
+                  callback(e, result);
+                }
+              );
+            }
+          })(engine));
+        }
       }
-    }
+    });
 
-    if (!this.result[_url] && matchedIndex >= 0 && this.engines[matchedIndex]) {
-      var engine = this.engines[matchedIndex];
-      this.query = merge.recursive(true, this.param[engine.path] || {}, this.query);
-
-      engine.func(absPath, this.buildRequestOption(filteredURL), this.query, function (e, result, realPath, MIME) {
+    if (Q.length) {
+      async.waterfall(Q, function (e, result) {
         if (!e) {
-          this.MIME = MIME;
-          this.result[_url] = this.convert(result, _url);
-          this.trace.engine(filteredURL, realPath || absPath);
+          self.result[_url] = self.convert(result, _url);
+          self.trace.engine(filteredURL, absPath);
         }
         next();
-      }.bind(this));
+      });
     }
     else {
       next();
@@ -225,7 +247,7 @@ FlexCombo.prototype = {
   },
   staticHandler: function (_url, next) {
     var filteredURL = this.filteredUrl(_url, false);
-    var absPath = this.getRealPath(filteredURL);
+    var absPath     = this.getRealPath(filteredURL);
 
     if (!this.result[_url]) {
       if (fsLib.existsSync(absPath)) {
@@ -262,14 +284,14 @@ FlexCombo.prototype = {
   },
   fetchHandler: function (_url, next) {
     if (!this.result[_url]) {
-      var self = this;
+      var self          = this;
       var requestOption = this.buildRequestOption(_url);
       if (requestOption) {
         fetch.request(requestOption, function (e, buff, nsres) {
           var remoteURL = self.HOST + _url;
           var tips;
           if (e) {
-            tips = remoteURL + " Request Error!";
+            tips              = remoteURL + " Request Error!";
             self.result[_url] = new Buffer("/* " + tips + " */");
             self.trace.error(tips, "Network 500");
             next(null, 500);
@@ -313,12 +335,12 @@ FlexCombo.prototype = {
 
     this.HOST = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    this.URL = urlLib.parse(req.url).path
+    this.URL  = urlLib.parse(req.url).path
       .replace(/([^\?])\?[^\?].*$/, "$1")
       .replace(/[\?\,]{1,}$/, '');
     this.MIME = mime.lookup(this.URL);
 
-    var suffix = ["\\.js$", "\\.css$", "\\.webp$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$", "\\.zip$"];
+    var suffix        = ["\\.js$", "\\.css$", "\\.webp$", "\\.png$", "\\.gif$", "\\.jpg$", "\\.jpeg$", "\\.ico$", "\\.swf$", "\\.xml$", "\\.json$", "\\.less$", "\\.scss$", "\\.svg$", "\\.ttf$", "\\.eot$", "\\.woff$", "\\.mp3$", "\\.zip$"];
     var supportedFile = this.param.supportedFile;
     if (supportedFile) {
       suffix = suffix.concat(supportedFile.split('|'));
@@ -351,7 +373,7 @@ FlexCombo.prototype = {
     return new RegExp(suffix.join('|')).test(this.URL);
   },
   stream: function (absPath, cb) {
-    absPath = pathLib.resolve(absPath);
+    absPath  = pathLib.resolve(absPath);
     var _url = absPath.replace(this.param.rootdir, '');
     this.trace.request(this.param.rootdir, _url);
     this.engineHandler(_url, function () {
@@ -362,9 +384,9 @@ FlexCombo.prototype = {
   handle: function (req, res, next) {
     if (this.init(req, res)) {
       var files = this.parser(this.URL);
-      var FLen = files.length;
-      var self = this;
-      var Q = [];
+      var FLen  = files.length;
+      var self  = this;
+      var Q     = [];
 
       this.trace.request(this.HOST, files);
 
@@ -398,7 +420,7 @@ FlexCombo.prototype = {
       async.series(Q, function (e, responseData) {
         responseData = Helper.unique(responseData);
 
-        var isText = ["application/javascript", "text/css"].indexOf(this.MIME) != -1;
+        var isText           = ["application/javascript", "text/css"].indexOf(this.MIME) != -1;
         var fileURI, buffArr = [];
         for (var i = 0; i < FLen; i++) {
           fileURI = files[i];

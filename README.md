@@ -162,10 +162,13 @@ Options 如下:
     "-min\\.css$": ".css"
   },
   "dac/tpl": {
-    "enable": true,
     "define": "KISSY.add",
     "anonymous": false,
     "filter": {}
+  },
+  "dac/babel": {
+    "enable": false,
+    "options": {}
   },
   "dac/xmd": {
     "cmd": [],
