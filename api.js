@@ -221,8 +221,7 @@ FlexCombo.prototype = {
               engine.func(
                 absPath, reqOpt,
                 merge.recursive(true, self.param[engine.path] || {}, self.query),
-                function (e, result, realPath, MIME) {
-                  self.MIME = MIME;
+                function (e, result) {
                   callback(e, result);
                 }
               );
@@ -441,17 +440,17 @@ FlexCombo.prototype = {
 
         res.write(content);
 
-        if (
-          files.length > 1
-          && /[\?&]_sourcemap\b/.test(req.url)
-          && isText
-        ) {
-          res.write(require("./lib/sourcemap")(
-            this.result,
-            files,
-            (this.MIME == "application/javascript" ? "js" : "css")
-          ));
-        }
+        // if (
+        //   files.length > 1
+        //   && /[\?&]_sourcemap\b/.test(req.url)
+        //   && isText
+        // ) {
+        //   res.write(require("./lib/sourcemap")(
+        //     this.result,
+        //     files,
+        //     (this.MIME == "application/javascript" ? "js" : "css")
+        //   ));
+        // }
 
         res.end();
         this.trace.response(this.HOST + req.url, content);

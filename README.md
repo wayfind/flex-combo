@@ -94,17 +94,6 @@ sudo flex-combo
 `Flex Combo`对这个技术细节做了周详考虑，内部提供了基于内容的编码探测机制。根据文件内容确定编码格式，一旦发现混合编码的情况，就将不符合要求的编码内容，就将起转换为输出编码格式。输出编码格式是可用户自定义的，目前支持UTF8和GBK两种。
 
 
-### 支持SourceMap
-
-在URL的query中添加`sourcemap`参数以启用SourceMap功能
-
-```
-eg.
-
-http://xxx.com/a.js?t=20150101&sourcemap
-http://xxx.com/??b.js,c.js?sourcemap
-```
-
 ## 命令参数
 
 用法: flex-combo [options]
@@ -167,7 +156,7 @@ Options 如下:
     "filter": {}
   },
   "dac/babel": {
-    "enable": false,
+    "target": [],
     "options": {}
   },
   "dac/xmd": {
